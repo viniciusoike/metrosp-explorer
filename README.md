@@ -1,13 +1,30 @@
 # metrosp explorer
 
-Data-exploration dashboard for the [metrosp](https://github.com/viniciusoike/metrosp)
-R data package — passenger demand for the São Paulo metro. This is a **hosted
-standalone app**: it lives in its own repository and is deployed separately from
-the package (it is not shipped inside it).
+<!-- badges: start -->
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Built with R](https://img.shields.io/badge/Built%20with-R-276DC3?logo=r&logoColor=white)](https://www.r-project.org/)
+[![Shiny](https://img.shields.io/badge/Shiny-bslib-447099?logo=rstudio&logoColor=white)](https://shiny.posit.co/)
+[![Deploy: Posit Connect Cloud](https://img.shields.io/badge/Deploy-Posit%20Connect%20Cloud-1A6EFF)](https://connect.posit.cloud/)
+[![Data: metrosp](https://img.shields.io/badge/Data-metrosp%20(CRAN)-success)](https://github.com/viniciusoike/metrosp)
+<!-- badges: end -->
 
-Tabs: line-level demand (with KPIs and optional STL trend), per-station monthly +
-daily series (with ramp-up shading), an interactive map (click a station to open
-it), and dataset downloads (the package datasets verbatim, in CSV/Excel/GPKG/GeoJSON).
+An interactive dashboard for exploring passenger demand on the **São Paulo metro**,
+built with [Shiny](https://shiny.posit.co/) on top of the
+[metrosp](https://github.com/viniciusoike/metrosp) R data package.
+
+This is a **hosted standalone app**: it lives in its own repository and is
+deployed separately from the data package (it is not shipped inside it).
+
+## Features
+
+- **Line-level demand** — monthly entrance/transported series per line, with KPIs
+  and an optional STL trend overlay.
+- **Per-station series** — monthly weekday averages and daily counts, with
+  ramp-up shading around each station's inauguration.
+- **Interactive map** — click a station to open its series; interchange stations
+  are drawn largest-first for legibility.
+- **Dataset downloads** — the package datasets verbatim, in CSV / Excel / GPKG /
+  GeoJSON.
 
 ## Run locally
 
@@ -34,14 +51,43 @@ install.packages(c(
 
 ## Deploy
 
-The repository root is the app (`app.R`, `shared.R`, `www/`), so it deploys as a
-unit. On **Posit Connect Cloud** (free tier), publish straight from this public
-GitHub repo. On classic Posit Connect / shinyapps.io:
+The repository root **is** the app: `app.R` (entrypoint), `shared.R`, `www/`, and
+a committed [`manifest.json`](manifest.json). It deploys as a unit.
+
+### Posit Connect Cloud (git-backed)
+
+[Connect Cloud](https://connect.posit.cloud/) publishes straight from this public
+GitHub repo. It reads `manifest.json` from the repo to restore the exact package
+set — so **`manifest.json` is tracked in git** (not ignored). Point Connect Cloud
+at this repository and it deploys; no `rsconnect` push required.
+
+### Classic Posit Connect / shinyapps.io
 
 ```r
 rsconnect::deployApp(appName = "metrosp-explorer")
 ```
 
-`rsconnect` infers the package set from the loaded namespaces. Every dependency
-(`metrosp`, `trendseries`, and the rest) is on CRAN, so any deploy target
-resolves them without GitHub access.
+Every dependency (`metrosp`, `trendseries`, and the rest) is on CRAN, so any
+deploy target resolves them without GitHub access.
+
+### Regenerating the manifest
+
+After changing the app's package usage, refresh the manifest and commit it:
+
+```r
+rsconnect::writeManifest(appDir = ".")
+```
+
+The manifest pins exact package versions, so they must be installable from CRAN
+at deploy time. If a dependency is ahead of CRAN locally, install the CRAN
+version before regenerating.
+
+## Data source
+
+Demand data, line/station geometries, and inauguration dates come from the
+[metrosp](https://github.com/viniciusoike/metrosp) package (on CRAN). The STL
+trend overlay uses [trendseries](https://github.com/viniciusoike/trendseries).
+
+## License
+
+[MIT](LICENSE) © Vinicius Oike

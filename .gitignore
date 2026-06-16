@@ -4,5 +4,7 @@
 .Ruserdata
 *.Rproj
 rsconnect/
-manifest.json
 .DS_Store
+
+# manifest.json is intentionally tracked: Posit Connect (Cloud) deploys read it
+# from the repo. Regenerate with `rsconnect::writeManifest()` — see README.
