@@ -2,7 +2,7 @@
 # Objects referenced here (line_labels, LINES, metro_theme, DATA_MIN/MAX,
 # HAS_TRENDSERIES, make_download_card, …) come from global.R.
 
-ui <- function(request) {
+function(request) {
   page_navbar(
     id = "main_nav",
     title = tags$span(
