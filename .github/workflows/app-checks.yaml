@@ -1,0 +1,55 @@
+name: app-checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      # UTF-8 locale so the parser reads the accented strings / em-dashes in
+      # ui.R and server.R correctly (the app itself enforces this at runtime)
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+
+      - name: Install system dependencies (sf)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgdal-dev libgeos-dev libproj-dev libudunits2-dev
+
+      - name: Install R package dependencies
+        shell: Rscript {0}
+        run: |
+          install.packages(c(
+            "shiny", "bslib", "bsicons", "dplyr", "leaflet", "echarts4r",
+            "sf", "htmltools", "htmlwidgets", "writexl", "readr",
+            "metrosp", "trendseries", "jsonlite"
+          ))
+
+      - name: App startup smoke check
+        shell: Rscript {0}
+        run: |
+          # ui.R / server.R hold bare (unassigned) expressions in Shiny's
+          # multi-file convention, so capture each file's last value
+          source("global.R", encoding = "UTF-8")
+          ui <- source("ui.R", encoding = "UTF-8")$value
+          server <- source("server.R", encoding = "UTF-8")$value
+          stopifnot(is.function(ui), is.function(server))
+          # Force UI construction so a broken tag tree fails the build
+          invisible(htmltools::renderTags(ui(NULL)))
+          cat("App startup smoke check passed.\n")
+
+      - name: Check manifest covers all app files and packages
+        shell: Rscript {0}
+        run: source("tools/check-manifest.R")
