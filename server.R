@@ -1,7 +1,7 @@
 # Server for the Metro SP explorer ----
 # Data objects and helpers are defined in global.R.
 
-function(input, output, session) {
+server <- function(input, output, session) {
   ## Lines tab ----
 
   lines_data <- reactive({
