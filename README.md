@@ -51,8 +51,10 @@ install.packages(c(
 
 ## Deploy
 
-The repository root **is** the app: `app.R` (entrypoint), `shared.R`, `www/`, and
-a committed [`manifest.json`](manifest.json). It deploys as a unit.
+The repository root **is** the app, in Shiny's multi-file layout: `global.R`
+(libraries, data prep, helpers, theme — sourced once at startup), `ui.R`,
+`server.R`, `www/`, and a committed [`manifest.json`](manifest.json). It
+deploys as a unit.
 
 ### Posit Connect Cloud (git-backed)
 
