@@ -3316,13 +3316,16 @@
       "checksum": "8c9a2286ab291e54c33e3e793348ce60"
     },
     "README.md": {
-      "checksum": "fc7337423818fcb3627cd6e79dee203b"
+      "checksum": "37c270c6f5fe52a44304c85b146dca9a"
     },
-    "app.R": {
-      "checksum": "61edf890e61abd8e4e41ef596bde3bf7"
+    "global.R": {
+      "checksum": "67b99efdfa6d1237b0213a68bc5d1922"
     },
-    "shared.R": {
-      "checksum": "c2f4a593a7f60923749738df7efd8059"
+    "server.R": {
+      "checksum": "1c6fa9d34aebb24f4e083e850d72e0ec"
+    },
+    "ui.R": {
+      "checksum": "9fa552bb26cbaba09636c13670829528"
     },
     "www/styles.css": {
       "checksum": "894fa8b00e404fb1af184d4b74aaf9cf"
