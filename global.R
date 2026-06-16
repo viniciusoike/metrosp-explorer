@@ -69,16 +69,25 @@ metro_primary <- "#171796"
 # Formatting helpers ----
 
 fmt_n <- function(x) {
-  if (!length(x) || all(is.na(x))) return("—")
+  if (!length(x) || all(is.na(x))) {
+    return("—")
+  }
   x <- x[!is.na(x)][1]
-  if (x >= 1e9) sprintf("%.2f bi", x / 1e9)
-  else if (x >= 1e6) sprintf("%.1f M", x / 1e6)
-  else if (x >= 1e3) sprintf("%.1f K", x / 1e3)
-  else formatC(round(x), format = "d", big.mark = ".")
+  if (x >= 1e9) {
+    sprintf("%.2f bi", x / 1e9)
+  } else if (x >= 1e6) {
+    sprintf("%.1f M", x / 1e6)
+  } else if (x >= 1e3) {
+    sprintf("%.1f K", x / 1e3)
+  } else {
+    formatC(round(x), format = "d", big.mark = ".")
+  }
 }
 
 fmt_pct <- function(x, signed = TRUE) {
-  if (is.na(x)) return("—")
+  if (is.na(x)) {
+    return("—")
+  }
   if (signed) sprintf("%+.1f%%", x) else sprintf("%.1f%%", x)
 }
 
@@ -98,8 +107,12 @@ kpi_card <- function(label, value, sub = NULL) {
 roll_mean <- function(x, k = 7L) {
   n <- length(x)
   out <- rep(NA_real_, n)
-  if (n < k) return(out)
-  for (i in seq.int(k, n)) out[i] <- mean(x[(i - k + 1L):i], na.rm = TRUE)
+  if (n < k) {
+    return(out)
+  }
+  for (i in seq.int(k, n)) {
+    out[i] <- mean(x[(i - k + 1L):i], na.rm = TRUE)
+  }
   out
 }
 
@@ -478,4 +491,3 @@ make_download_card <- function(cfg) {
     )
   )
 }
-
