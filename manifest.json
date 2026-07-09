@@ -1846,7 +1846,7 @@
         "Package": "metrosp",
         "Type": "Package",
         "Title": "São Paulo Metro Passenger Demand Data",
-        "Version": "1.1.0",
+        "Version": "1.1.1",
         "Authors@R": "c(\n    person(\n      \"Vinicius\", \"Oike\",\n      email = \"viniciusoike@gmail.com\",\n      role = c(\"aut\", \"cre\", \"cph\"),\n      comment = c(ORCID = \"0009-0005-8015-9189\")\n    )\n  )",
         "Description": "Provides passenger demand data for the São Paulo metro system,\n    covering 2012 to 2026. Datasets include monthly passenger entries and\n    transported counts by line, average weekday station entries, daily\n    station entries, and spatial geometries for metro and commuter train\n    lines and stations.",
         "License": "MIT + file LICENSE",
