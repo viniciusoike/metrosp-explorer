@@ -72,14 +72,29 @@ function(input, output, session) {
     } else {
       "—"
     }
-    peak <- monthly |> slice_max(value, n = 1)
+    # same calendar month one year earlier (monthly dates, so exact match)
+    prev_month_date <- seq(latest$date, by = "-1 year", length.out = 2)[2]
+    prev_month <- monthly |> filter(date == prev_month_date)
+    mom_yoy_label <- if (nrow(prev_month) == 1 && prev_month$value > 0) {
+      fmt_pct((latest$value / prev_month$value - 1) * 100)
+    } else {
+      "—"
+    }
 
     div(
       class = "kpi-grid kpi-grid-4",
       kpi_card("Último mês", fmt_n(latest$value), fmt_month_pt(latest$date)),
+      kpi_card(
+        "Variação mensal (a/a)",
+        mom_yoy_label,
+        paste0(
+          fmt_month_pt(latest$date),
+          " vs. ",
+          fmt_month_pt(prev_month_date)
+        )
+      ),
       kpi_card("Variação anual", yoy_label, "últimos 12m vs. anteriores"),
-      kpi_card("vs. 2019", vs2019_label, "últimos 12m vs. média de 2019"),
-      kpi_card("Mês de pico", fmt_n(peak$value[1]), fmt_month_pt(peak$date[1]))
+      kpi_card("vs. 2019", vs2019_label, "últimos 12m vs. média de 2019")
     )
   })
 
@@ -318,9 +333,30 @@ function(input, output, session) {
       "—"
     }
 
-    peak <- df_monthly |> filter(!is.na(value)) |> slice_max(value, n = 1)
-    peak_val <- if (nrow(peak) > 0) fmt_n(peak$value) else "—"
-    peak_when <- if (nrow(peak) > 0) fmt_month_pt(peak$date[1]) else ""
+    # full series (not start-date filtered) so the prior-year month is
+    # available even when the visible window is shorter than 12 months
+    mo_full <- sta_avg |>
+      filter(
+        line_number == input$sta_line,
+        station_name == input$sta_station,
+        !is.na(value)
+      )
+    latest_mo <- mo_full |> slice_max(date, n = 1)
+    mom_yoy_val <- "—"
+    mom_yoy_sub <- ""
+    if (nrow(latest_mo) == 1) {
+      # same calendar month one year earlier (monthly dates, so exact match)
+      prev_mo_date <- seq(latest_mo$date, by = "-1 year", length.out = 2)[2]
+      prev_mo <- mo_full |> filter(date == prev_mo_date)
+      if (nrow(prev_mo) == 1 && prev_mo$value > 0) {
+        mom_yoy_val <- fmt_pct((latest_mo$value / prev_mo$value - 1) * 100)
+      }
+      mom_yoy_sub <- paste0(
+        fmt_month_pt(latest_mo$date),
+        " vs. ",
+        fmt_month_pt(prev_mo_date)
+      )
+    }
 
     latest <- max(df_monthly$date, na.rm = TRUE)
     recent <- df_monthly |> filter(date > latest - 365, !is.na(value))
@@ -350,7 +386,7 @@ function(input, output, session) {
         we_avg,
         paste0("embarques/dia — ", yr_label)
       ),
-      kpi_card("Mês de pico", peak_val, peak_when),
+      kpi_card("Variação mensal (a/a)", mom_yoy_val, mom_yoy_sub),
       kpi_card("Variação anual", yoy_label, "últimos 12m vs. anteriores")
     )
   })
@@ -481,9 +517,148 @@ function(input, output, session) {
 
   ## Map tab ----
 
+  # Adds markers + legend for the given metric and toggles the line variant.
+  # Only additive so it works on both the fresh widget and a leafletProxy;
+  # the proxy path clears the "stations" group first (addLegend replaces
+  # itself via layerId).
+  map_draw_stations <- function(m, metric, year = max(MAP_YEARS)) {
+    df <- sf_stations_map
+
+    if (metric == "rede") {
+      # transit convention: interchange hubs are white with a dark stroke
+      hub <- df$n_lines > 1
+      fill <- ifelse(hub, "#FFFFFF", unname(line_colors[df$first_line]))
+      stroke <- ifelse(hub, "#0E1130", "#FFFFFF")
+      stroke_opacity <- 1
+      m <- m |> showGroup("lines_color") |> hideGroup("lines_neutral")
+    } else {
+      # markers missing in the chosen year fall to the "sem dados" gray,
+      # which is what makes stations visibly appear/vanish in the animation
+      demand_year <- map_demand_by_year[[as.character(year)]]
+      fill <- switch(
+        metric,
+        demanda = map_bin_color(demand_year, map_seq_breaks, map_seq_colors),
+        vs2019 = map_bin_color(
+          df$pct_2019,
+          map_div_breaks$vs2019,
+          map_div_colors
+        ),
+        yoy = map_bin_color(df$pct_yoy, map_div_breaks$yoy, map_div_colors)
+      )
+      # soft ink ring keeps the light ramp steps visible on the pale tiles
+      stroke <- "#0E1130"
+      stroke_opacity <- 0.35
+      m <- m |> showGroup("lines_neutral") |> hideGroup("lines_color")
+    }
+
+    leg <- switch(
+      metric,
+      rede = list(
+        colors = unname(line_colors),
+        labels = unname(line_labels),
+        title = "Linhas"
+      ),
+      demanda = list(
+        colors = c(map_seq_colors, map_na_color),
+        labels = c(map_seq_labels, "sem dados"),
+        title = paste0("Embarques/dia útil (", year, ")")
+      ),
+      vs2019 = list(
+        colors = c(map_div_colors, map_na_color),
+        labels = c(map_div_labels$vs2019, "sem dados"),
+        title = "Últimos 12m vs. 2019"
+      ),
+      yoy = list(
+        colors = c(map_div_colors, map_na_color),
+        labels = c(map_div_labels$yoy, "sem dados"),
+        title = "Últimos 12m vs. anteriores"
+      )
+    )
+
+    # In Demanda mode the tooltip and popup must quote the selected year,
+    # otherwise the slider looks inert: bins are coarse, so many fills
+    # survive a year change and the static 12m numbers never move
+    if (metric == "demanda") {
+      hover <- lapply(seq_len(nrow(df)), function(i) {
+        demand <- if (is.na(demand_year[i])) {
+          paste0("Sem dados em ", year)
+        } else {
+          paste0(
+            "Média dias úteis em ",
+            year,
+            ": <b>",
+            fmt_n(demand_year[i]),
+            "</b> pass./dia"
+          )
+        }
+        htmltools::HTML(paste0(
+          "<b>",
+          df$station_name[i],
+          "</b><br/>",
+          df$lines_lbl[i],
+          "<br/>",
+          demand
+        ))
+      })
+      year_rows <- map_metric_row(
+        paste0("Média em ", year),
+        ifelse(
+          is.na(demand_year),
+          "sem dados",
+          paste0(fmt_n_vec(demand_year), " pass./dia útil")
+        )
+      )
+      popup <- mapply(
+        sub,
+        replacement = year_rows,
+        x = df$popup_html,
+        MoreArgs = list(pattern = "{{YEAR_ROW}}", fixed = TRUE),
+        USE.NAMES = FALSE
+      )
+    } else {
+      hover <- map_hover_html
+      popup <- sub("{{YEAR_ROW}}", "", df$popup_html, fixed = TRUE)
+    }
+
+    m |>
+      addCircleMarkers(
+        data = df,
+        group = "stations",
+        layerId = df$station_name,
+        radius = 6,
+        weight = 1.5,
+        color = stroke,
+        opacity = stroke_opacity,
+        fillColor = fill,
+        fillOpacity = 0.95,
+        label = hover,
+        popup = popup,
+        popupOptions = popupOptions(maxWidth = 300),
+        labelOptions = labelOptions(
+          style = list(
+            "font-family" = "Inter, -apple-system, sans-serif",
+            "font-size" = "13px",
+            "padding" = "8px 12px",
+            "border-radius" = "6px",
+            "box-shadow" = "0 2px 8px rgba(14,17,48,0.12)"
+          ),
+          direction = "auto"
+        )
+      ) |>
+      addLegend(
+        "bottomright",
+        colors = leg$colors,
+        labels = leg$labels,
+        title = leg$title,
+        opacity = 1,
+        layerId = "map_legend"
+      )
+  }
+
   output$map <- renderLeaflet({
     m <- leaflet(options = leafletOptions(zoomControl = TRUE)) |>
-      addProviderTiles(providers$CartoDB.Positron)
+      addProviderTiles(providers$CartoDB.PositronNoLabels) |>
+      addProviderTiles(providers$CartoDB.PositronOnlyLabels)
 
     if (!is.null(sf_stations_map)) {
       bbox <- sf::st_bbox(sf_stations_map)
@@ -499,6 +674,21 @@ function(input, output, session) {
     }
 
     if (!is.null(sf_lines)) {
+      # all casings first so a later line's white halo never cuts an earlier
+      # line's colored stroke at crossings
+      for (ln in LINES) {
+        geom <- sf_lines |> filter(line_number == ln)
+        if (nrow(geom) > 0) {
+          m <- m |>
+            addPolylines(
+              data = geom,
+              color = "#FFFFFF",
+              weight = 7,
+              opacity = 1,
+              group = "lines_casing"
+            )
+        }
+      }
       for (ln in LINES) {
         geom <- sf_lines |> filter(line_number == ln)
         if (nrow(geom) > 0) {
@@ -507,82 +697,60 @@ function(input, output, session) {
               data = geom,
               color = line_colors[ln],
               weight = 4,
-              opacity = 0.8,
+              opacity = 0.95,
               label = line_labels[ln],
+              group = "lines_color",
               highlightOptions = highlightOptions(weight = 6, opacity = 1)
+            ) |>
+            addPolylines(
+              data = geom,
+              color = map_line_neutral,
+              weight = 4,
+              opacity = 0.9,
+              label = line_labels[ln],
+              group = "lines_neutral"
             )
         }
       }
     }
 
     if (!is.null(sf_stations_map)) {
-      hover_labels <- lapply(seq_len(nrow(sf_stations_map)), function(i) {
-        s <- sf_stations_map[i, , drop = FALSE]
-        demand <- if (is.na(s$avg)) {
-          "Sem dados de demanda"
-        } else {
-          paste0("Média dias úteis: <b>", fmt_n(s$avg), "</b> pass./dia")
-        }
-        htmltools::HTML(paste0(
-          "<b>",
-          s$station_name,
-          "</b><br/>",
-          line_labels[s$line_number],
-          "<br/>",
-          demand
-        ))
-      })
-
-      m <- m |>
-        addCircleMarkers(
-          data = sf_stations_map,
-          # "||" cannot appear in a station name, so the click handler can
-          # split the id back into line + station unambiguously
-          layerId = paste(
-            sf_stations_map$line_number,
-            sf_stations_map$station_name,
-            sep = "||"
-          ),
-          radius = ~radius,
-          color = "white",
-          fillColor = ~ line_colors[line_number],
-          fillOpacity = 0.9,
-          weight = 1.5,
-          stroke = TRUE,
-          label = hover_labels,
-          labelOptions = labelOptions(
-            style = list(
-              "font-family" = "Inter, -apple-system, sans-serif",
-              "font-size" = "13px",
-              "padding" = "8px 12px",
-              "border-radius" = "6px",
-              "box-shadow" = "0 2px 8px rgba(14,17,48,0.12)"
-            ),
-            direction = "auto"
-          )
-        )
+      m <- map_draw_stations(
+        m,
+        isolate(input$map_metric) %||% "demanda",
+        isolate(input$map_year) %||% max(MAP_YEARS)
+      )
     }
 
     m
   })
 
-  observeEvent(input$map_marker_click, {
-    id <- input$map_marker_click$id
+  # One observer for both controls: a year change while outside Demanda
+  # redraws the same thing (cheap at ~90 markers), which keeps the logic flat
+  observeEvent(
+    list(input$map_metric, input$map_year),
+    {
+      req(!is.null(sf_stations_map), input$map_metric)
+      leafletProxy("map") |>
+        clearGroup("stations") |>
+        map_draw_stations(
+          input$map_metric,
+          input$map_year %||% max(MAP_YEARS)
+        )
+    },
+    ignoreInit = TRUE
+  )
+
+  # Fired by the "Ver série" links inside marker popups (via
+  # Shiny.setInputValue); links are only rendered for line-stations that
+  # have demand data
+  observeEvent(input$map_go_station, {
+    id <- input$map_go_station
     req(is.character(id), nzchar(id))
     parts <- strsplit(id, "||", fixed = TRUE)[[1]]
     req(length(parts) == 2)
     ln <- parts[1]
     sta <- parts[2]
-
-    has_data <- stations_by_line |>
-      filter(line_number == ln, station_name == sta)
-    if (nrow(has_data) == 0) {
-      showNotification(
-        "Sem dados de demanda para esta estação.",
-        type = "message"
-      )
-      return()
-    }
 
     nav_select("main_nav", "estacoes")
     if (identical(input$sta_line, ln)) {

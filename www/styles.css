@@ -243,10 +243,228 @@ label, .control-label {
   margin-right: 8px;
 }
 
+.source-tag a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.source-tag a:hover {
+  color: var(--metro-blue);
+}
+
 /* ── echarts4r container ───────────────────────────────────────────────── */
 
 .echarts4r {
   background: transparent !important;
+}
+
+/* ── Map: metric toolbar (segmented pills) ─────────────────────────────── */
+
+.map-toolbar .shiny-input-container {
+  margin-bottom: 0;
+  width: auto;
+}
+
+.map-toolbar .shiny-options-group {
+  display: flex;
+  gap: 6px;
+}
+
+.map-toolbar label.radio-inline {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  font-weight: 500;
+}
+
+.map-toolbar .radio-inline input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.map-toolbar .radio-inline span {
+  display: inline-block;
+  padding: 4px 12px;
+  border: 1px solid var(--metro-line);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: var(--metro-ink-soft);
+  background: var(--metro-card);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.map-toolbar .radio-inline span:hover {
+  background: rgba(23, 23, 150, 0.05);
+  color: var(--metro-blue);
+}
+
+.map-toolbar .radio-inline input:checked + span {
+  background: rgba(23, 23, 150, 0.08);
+  border-color: var(--metro-blue);
+  color: var(--metro-blue);
+  font-weight: 600;
+}
+
+.map-toolbar .radio-inline input:focus-visible + span {
+  box-shadow: 0 0 0 3px rgba(23, 23, 150, 0.12);
+}
+
+/* ── Map: year slider (Demanda mode) ───────────────────────────────────── */
+
+.map-year-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 18px 2px;
+}
+
+.map-year-row .shiny-input-container {
+  margin-bottom: 0;
+}
+
+.map-year-row .irs--shiny .irs-bar,
+.map-year-row .irs--shiny .irs-single {
+  background: var(--metro-blue);
+  border-color: var(--metro-blue);
+}
+
+.map-year-row .irs--shiny .irs-handle {
+  border-color: var(--metro-blue);
+}
+
+.map-year-hint {
+  font-size: 0.78rem;
+  color: var(--metro-mute);
+}
+
+.map-year-row .slider-animate-container {
+  text-align: left;
+  margin-top: 2px;
+}
+
+.map-year-row .slider-animate-button {
+  color: var(--metro-blue);
+  opacity: 0.85;
+}
+
+/* ── Map: popups and legend ────────────────────────────────────────────── */
+
+.leaflet-popup-content-wrapper {
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(14, 17, 48, 0.16);
+}
+
+.leaflet-popup-content {
+  margin: 14px 16px;
+  font-family: Inter, -apple-system, sans-serif;
+  font-size: 0.85rem;
+  color: var(--metro-ink);
+  line-height: 1.45;
+}
+
+.map-popup {
+  min-width: 220px;
+}
+
+.map-popup-title {
+  font-weight: 600;
+  font-size: 0.98rem;
+  margin-bottom: 8px;
+}
+
+.map-popup-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 2px 0;
+}
+
+.map-popup-row span {
+  color: var(--metro-ink-soft);
+}
+
+.map-popup-row b {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.map-hover-note {
+  color: var(--metro-mute);
+  font-size: 11px;
+}
+
+.map-popup-note {
+  font-size: 0.72rem;
+  color: var(--metro-mute);
+  padding-top: 2px;
+}
+
+.map-popup-links {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--metro-line);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.map-popup-caption {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--metro-mute);
+  margin-bottom: 2px;
+}
+
+.map-popup-link {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--metro-blue);
+  text-decoration: none;
+  font-weight: 500;
+  padding: 2px 0;
+}
+
+.map-popup-link:hover {
+  text-decoration: underline;
+  color: var(--metro-blue);
+}
+
+.map-popup-link-val {
+  margin-left: auto;
+  color: var(--metro-ink-soft);
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+
+.map-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  flex: none;
+}
+
+.map-arrow {
+  flex: none;
+}
+
+.leaflet .info.legend {
+  font-family: Inter, -apple-system, sans-serif;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--metro-ink-soft);
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 10px;
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--metro-line);
+  padding: 10px 12px;
 }
 
 /* ── Download controls ──────────────────────────────────────────────────── */

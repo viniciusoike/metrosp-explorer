@@ -9,6 +9,9 @@ function(request) {
       bs_icon("train-front-fill", size = "1.05em", class = "me-2"),
       "Metro SP — Explorador de Dados"
     ),
+    # without this the browser tab shows the icon's raw SVG markup: bslib
+    # flattens the HTML `title` into <title> verbatim
+    window_title = "Metro SP — Explorador de Dados",
     theme = metro_theme,
     lang = "pt-BR",
     fillable = FALSE,
@@ -203,14 +206,58 @@ function(request) {
       card(
         full_screen = TRUE,
         card_header(
-          "Linhas e estações do Metrô de São Paulo",
-          tags$small(
-            class = "ms-2 text-muted",
-            "círculos proporcionais à demanda — clique para abrir a estação"
+          class = "d-flex align-items-center justify-content-between gap-3 flex-wrap",
+          div(
+            "Linhas e estações do Metrô de São Paulo",
+            tags$small(
+              class = "d-block text-muted fw-normal",
+              "clique em uma estação para detalhes e para abrir a série completa"
+            )
+          ),
+          div(
+            class = "map-toolbar",
+            radioButtons(
+              "map_metric",
+              NULL,
+              inline = TRUE,
+              choices = c(
+                "Demanda" = "demanda",
+                "Variação anual" = "yoy",
+                "vs. 2019" = "vs2019",
+                "Rede" = "rede"
+              ),
+              selected = "demanda"
+            )
           )
         ),
         if (!is.null(sf_lines) || !is.null(sf_stations)) {
-          leafletOutput("map", height = "600px")
+          tagList(
+            if (!is.null(sf_stations_map)) {
+              conditionalPanel(
+                condition = "input.map_metric == 'demanda'",
+                div(
+                  class = "map-year-row",
+                  sliderInput(
+                    "map_year",
+                    NULL,
+                    min = min(MAP_YEARS),
+                    max = max(MAP_YEARS),
+                    value = max(MAP_YEARS),
+                    step = 1,
+                    sep = "",
+                    ticks = FALSE,
+                    width = "320px",
+                    animate = animationOptions(interval = 900)
+                  ),
+                  tags$span(
+                    class = "map-year-hint",
+                    "média de dias úteis no ano — use ▶ para animar"
+                  )
+                )
+              )
+            },
+            leafletOutput("map", height = "600px")
+          )
         } else {
           div(
             class = "station-empty",
@@ -263,11 +310,7 @@ function(request) {
                 "informações de demanda de passageiros do Metrô de São Paulo (%s–%s). ",
                 format(DATA_MIN, "%Y"),
                 format(DATA_MAX, "%Y")
-              ),
-              "Similar ao ",
-              tags$code("nycflights13"),
-              ", o pacote contém apenas datasets, ",
-              "sem funções voltadas ao usuário."
+              )
             ),
             tags$p(
               sprintf(
@@ -289,6 +332,11 @@ function(request) {
                 href = "https://viniciusoike.github.io/metrosp/",
                 target = "_blank",
                 "Documentação (pkgdown)"
+              )),
+              tags$li(tags$a(
+                href = "https://viniciusoike.r-universe.dev/metrosp",
+                target = "_blank",
+                "r-universe"
               )),
               tags$li(tags$a(
                 href = "https://github.com/viniciusoike/metrosp/issues",
@@ -332,8 +380,8 @@ function(request) {
             tags$h6("Limitações conhecidas"),
             tags$ul(
               class = "small text-muted",
-              tags$li("Linhas 4/5 — passageiros transportados não disponíveis"),
-              tags$li("Linhas 4/5 — código de estação é NA"),
+              tags$li("Linhas 4/5: passageiros transportados não disponíveis"),
+              tags$li("Linhas 4/5: código de estação é NA"),
               tags$li("2017: dados disponíveis apenas de outubro a dezembro"),
               tags$li(
                 sprintf(
@@ -352,7 +400,15 @@ function(request) {
       tags$span(
         class = "source-tag",
         sprintf("Dados até %s", fmt_month_pt(DATA_MAX)),
-        " · Fontes: METRO SP · Insper Dataverse · GeoSampa"
+        " · Fonte: ",
+        # metrosp consolidates and processes the raw sources (METRO SP,
+        # Insper Dataverse, GeoSampa), so the package is the credited
+        # source; the raw sources are detailed in the Sobre tab
+        tags$a(
+          href = "https://viniciusoike.github.io/metrosp/",
+          target = "_blank",
+          "{metrosp}"
+        )
       )
     )
   )
