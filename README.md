@@ -21,8 +21,9 @@ deployed separately from the data package (it is not shipped inside it).
   and an optional STL trend overlay.
 - **Per-station series** — monthly weekday averages and daily counts, with
   ramp-up shading around each station's inauguration.
-- **Interactive map** — click a station to open its series; interchange stations
-  are drawn largest-first for legibility.
+- **Interactive map** — four metric views: yearly demand with an animated year
+  slider, year-over-year change, recovery vs. 2019, and the network by line.
+  Station popups show KPIs and link straight to each station's series.
 - **Dataset downloads** — the package datasets verbatim, in CSV / Excel / GPKG /
   GeoJSON.
 

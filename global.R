@@ -67,6 +67,20 @@ if (!exists("%||%")) {
 metro_primary <- "#171796"
 
 # Formatting helpers ----
+# pt-BR numbers everywhere: "." thousands, "," decimals, mil/mi/bi
+# abbreviations. sprintf() and the echarts JS formatters ignore R options
+# like OutDec, so every user-facing number funnels through these helpers
+# (mirrored in the JS formatters below) rather than a global option.
+
+fmt_dec <- function(x, digits = 1) {
+  formatC(x, format = "f", digits = digits, big.mark = ".", decimal.mark = ",")
+}
+
+fmt_int <- function(x) {
+  # decimal.mark is unused for "d" but silences the prettyNum warning about
+  # big.mark and decimal.mark both being "."
+  formatC(round(x), format = "d", big.mark = ".", decimal.mark = ",")
+}
 
 fmt_n <- function(x) {
   if (!length(x) || all(is.na(x))) {
@@ -74,21 +88,30 @@ fmt_n <- function(x) {
   }
   x <- x[!is.na(x)][1]
   if (x >= 1e9) {
-    sprintf("%.2f bi", x / 1e9)
+    paste0(fmt_dec(x / 1e9, 2), " bi")
   } else if (x >= 1e6) {
-    sprintf("%.1f M", x / 1e6)
+    paste0(fmt_dec(x / 1e6, 1), " mi")
   } else if (x >= 1e3) {
-    sprintf("%.1f K", x / 1e3)
+    paste0(fmt_dec(x / 1e3, 1), " mil")
   } else {
-    formatC(round(x), format = "d", big.mark = ".")
+    fmt_int(x)
   }
+}
+
+# fmt_n() reduces to the first non-NA value; this maps it element-wise
+fmt_n_vec <- function(x) {
+  vapply(x, fmt_n, character(1))
 }
 
 fmt_pct <- function(x, signed = TRUE) {
   if (is.na(x)) {
     return("—")
   }
-  if (signed) sprintf("%+.1f%%", x) else sprintf("%.1f%%", x)
+  flag <- if (signed) "+" else ""
+  paste0(
+    formatC(x, format = "f", digits = 1, flag = flag, decimal.mark = ","),
+    "%"
+  )
 }
 
 kpi_card <- function(label, value, sub = NULL) {
@@ -147,11 +170,12 @@ date_or <- function(x, default) {
 
 # echarts4r JS formatters ----
 
+# Mirrors fmt_n(): mil/mi/bi with a decimal comma
 js_axis_label_compact <- htmlwidgets::JS(
   "function(v) {",
-  "  if (v >= 1e9) return (v/1e9).toFixed(1) + 'bi';",
-  "  if (v >= 1e6) return (v/1e6).toFixed(1) + 'M';",
-  "  if (v >= 1e3) return Math.round(v/1e3) + 'K';",
+  "  if (v >= 1e9) return (v/1e9).toFixed(1).replace('.', ',') + ' bi';",
+  "  if (v >= 1e6) return (v/1e6).toFixed(1).replace('.', ',') + ' mi';",
+  "  if (v >= 1e3) return Math.round(v/1e3) + ' mil';",
   "  return v;",
   "}"
 )
@@ -204,7 +228,8 @@ metro_theme <- bs_theme(
   base_font = font_google("Inter", local = FALSE),
   heading_font = font_google("Inter", local = FALSE),
   bg = "#F7F8FB",
-  fg = "#0E1130"
+  fg = "#0E1130",
+  "min-contrast-ratio" = 4.1
 )
 
 # trendseries (optional): graceful degradation ----
@@ -285,28 +310,334 @@ stations_by_line <- sta_avg |>
   distinct(line_number, station_name) |>
   arrange(line_number, station_name)
 
-## Station demand for map markers ----
-sta_demand_cutoff <- max(sta_avg$date, na.rm = TRUE) - 365
-sta_demand_map <- sta_avg |>
-  filter(!is.na(value), date > sta_demand_cutoff) |>
-  group_by(line_number, station_name) |>
-  summarise(avg = mean(value, na.rm = TRUE), .groups = "drop")
+## Map palettes ----
+# Line colors are METRO SP brand colors (fixed). In the comparison modes the
+# lines dim to neutral gray so the metric ramp owns the hue channel.
+map_line_neutral <- "#C3C6D1"
+map_na_color <- "#CDD0DA"
 
-sf_stations_map <- if (!is.null(sf_stations)) {
-  # Falls back to 1 if the demand window is empty/degenerate so the radius
-  # scaling below never divides by -Inf/0
-  max_avg <- max(sta_demand_map$avg, na.rm = TRUE)
-  if (!is.finite(max_avg) || max_avg <= 0) {
-    max_avg <- 1
+# Sequential: single-hue ramp on the metro blue, light -> dark
+map_seq_colors <- c("#C6CDF0", "#98A3E2", "#6B79D0", "#3F49B8", "#171796")
+map_seq_breaks <- c(0, 10e3, 25e3, 50e3, 100e3, Inf)
+map_seq_labels <- c(
+  "até 10 mil",
+  "10–25 mil",
+  "25–50 mil",
+  "50–100 mil",
+  "mais de 100 mil"
+)
+
+# Diverging: ColorBrewer RdBu (CVD-safe), neutral gray midpoint at ~0
+map_div_colors <- c(
+  "#B2182B",
+  "#D6604D",
+  "#F4A582",
+  "#E6E6E6",
+  "#92C5DE",
+  "#4393C3",
+  "#2166AC"
+)
+map_div_breaks <- list(
+  vs2019 = c(-Inf, -30, -15, -5, 5, 15, 30, Inf),
+  yoy = c(-Inf, -15, -5, -1, 1, 5, 15, Inf)
+)
+map_div_labels <- list(
+  vs2019 = c(
+    "abaixo de −30%",
+    "−30% a −15%",
+    "−15% a −5%",
+    "−5% a +5%",
+    "+5% a +15%",
+    "+15% a +30%",
+    "acima de +30%"
+  ),
+  yoy = c(
+    "abaixo de −15%",
+    "−15% a −5%",
+    "−5% a −1%",
+    "−1% a +1%",
+    "+1% a +5%",
+    "+5% a +15%",
+    "acima de +15%"
+  )
+)
+
+map_bin_color <- function(x, breaks, colors) {
+  out <- colors[cut(x, breaks, labels = FALSE)]
+  out[is.na(out)] <- map_na_color
+  out
+}
+
+## Station metrics for the map ----
+# One marker per station. Interchange stations come as one point per line up
+# to ~200 m apart, so collapse to the centroid. All metrics share one
+# reference month per station: the last month every serving line reports
+# (lines 4/5 stop a year before the rest, so a hub like Luz anchors to the
+# older date instead of mixing windows). The reference month is always
+# disclosed in the popup, and the percent changes compare only lines present
+# in both windows, so a line opening mid-window cannot show up as growth.
+mean_or_na <- function(x) {
+  if (!length(x) || all(is.na(x))) NA_real_ else mean(x, na.rm = TRUE)
+}
+
+sf_stations_map <- NULL
+if (!is.null(sf_stations)) {
+  # dates are first-of-month, so the same calendar month one year earlier
+  # always exists as a plain date
+  prev_year_month <- function(d) {
+    as.Date(paste0(as.integer(format(d, "%Y")) - 1L, format(d, "-%m-%d")))
   }
-  sf_stations |>
-    left_join(sta_demand_map, by = c("line_number", "station_name")) |>
-    mutate(radius = ifelse(is.na(avg), 4, 4 + 12 * sqrt(avg / max_avg))) |>
-    # Interchange stations have one row per line at the same point; draw the
-    # larger circle first so the smaller one lands on top and stays visible
-    arrange(desc(radius))
-} else {
-  NULL
+
+  map_line_ref <- sta_avg |>
+    filter(!is.na(value)) |>
+    group_by(line_number, station_name) |>
+    summarise(line_max = max(date), .groups = "drop") |>
+    group_by(station_name) |>
+    mutate(ref_date = min(line_max)) |>
+    ungroup() |>
+    mutate(prev_date = prev_year_month(ref_date)) |>
+    select(line_number, station_name, ref_date, prev_date)
+
+  sta_map_metrics <- sta_avg |>
+    filter(!is.na(value)) |>
+    inner_join(map_line_ref, by = c("line_number", "station_name")) |>
+    filter(date <= ref_date) |>
+    group_by(line_number, station_name, ref_date, prev_date) |>
+    summarise(
+      avg_12m = mean_or_na(value[date > ref_date - 365]),
+      avg_prior = mean_or_na(
+        value[date > ref_date - 730 & date <= ref_date - 365]
+      ),
+      avg_2019 = mean_or_na(value[year == 2019]),
+      latest_val = mean_or_na(value[date == ref_date]),
+      prev_val = mean_or_na(value[date == prev_date]),
+      .groups = "drop"
+    )
+
+  map_per_line <- sf_stations |>
+    select(line_number, station_name) |>
+    left_join(sta_map_metrics, by = c("line_number", "station_name")) |>
+    arrange(station_name, as.integer(line_number))
+
+  # avg_12m must be summarised last: it rebinds the name the pct_* blocks read
+  sf_stations_map <- map_per_line |>
+    group_by(station_name) |>
+    summarise(
+      first_line = line_number[1],
+      n_lines = dplyr::n(),
+      # constant within a station by construction; [1] with an NA guard in
+      # case a station-line ever fails the demand join
+      ref_date = {
+        d <- ref_date[!is.na(ref_date)]
+        if (length(d)) d[1] else as.Date(NA)
+      },
+      latest_month = if (all(is.na(latest_val))) {
+        NA_real_
+      } else {
+        sum(latest_val, na.rm = TRUE)
+      },
+      pct_mom = {
+        ok <- !is.na(latest_val) & !is.na(prev_val) & prev_val > 0
+        if (any(ok)) {
+          (sum(latest_val[ok]) / sum(prev_val[ok]) - 1) * 100
+        } else {
+          NA_real_
+        }
+      },
+      pct_2019 = {
+        ok <- !is.na(avg_12m) & !is.na(avg_2019)
+        if (any(ok)) {
+          (sum(avg_12m[ok]) / sum(avg_2019[ok]) - 1) * 100
+        } else {
+          NA_real_
+        }
+      },
+      pct_yoy = {
+        ok <- !is.na(avg_12m) & !is.na(avg_prior)
+        if (any(ok)) {
+          (sum(avg_12m[ok]) / sum(avg_prior[ok]) - 1) * 100
+        } else {
+          NA_real_
+        }
+      },
+      avg_12m = if (all(is.na(avg_12m))) {
+        NA_real_
+      } else {
+        sum(avg_12m, na.rm = TRUE)
+      },
+      .groups = "drop"
+    )
+  # lon/lat centroid warning is irrelevant at station scale
+  sf_stations_map <- suppressWarnings(sf::st_centroid(sf_stations_map))
+
+  ## Yearly demand per station (drives the Demanda year slider) ----
+  # One numeric vector per year, aligned to sf_stations_map rows so the
+  # redraw is a plain lookup. Fixed bins across years keep the animation
+  # comparable. 2017 covers only Oct-Dec (known source limitation).
+  map_yearly <- sta_avg |>
+    filter(!is.na(value)) |>
+    group_by(line_number, station_name, year) |>
+    summarise(avg = mean(value), .groups = "drop") |>
+    group_by(station_name, year) |>
+    summarise(avg = sum(avg), .groups = "drop")
+
+  # before 2017 only Line 4 (Insper) reports station data, which would give
+  # five nearly-all-gray slider steps; start at the first multi-line year
+  map_line_years <- sta_avg |>
+    filter(!is.na(value)) |>
+    distinct(year, line_number) |>
+    count(year)
+  MAP_YEAR_MIN <- min(map_line_years$year[map_line_years$n > 1])
+  MAP_YEARS <- sort(unique(map_yearly$year[map_yearly$year >= MAP_YEAR_MIN]))
+  map_demand_by_year <- lapply(
+    setNames(MAP_YEARS, MAP_YEARS),
+    function(y) {
+      d <- map_yearly[map_yearly$year == y, ]
+      d$avg[match(sf_stations_map$station_name, d$station_name)]
+    }
+  )
+
+  ## Map hover labels and popups (static, built once) ----
+  map_metric_row <- function(label, value) {
+    paste0(
+      '<div class="map-popup-row"><span>',
+      label,
+      "</span><b>",
+      value,
+      "</b></div>"
+    )
+  }
+
+  map_line_link <- function(ln, station, avg) {
+    # station names contain no quotes today; escape defensively anyway
+    target <- gsub("'", "\\\\'", paste(ln, station, sep = "||"))
+    sprintf(
+      paste0(
+        '<a href="#" class="map-popup-link" onclick="',
+        "Shiny.setInputValue('map_go_station', '%s', {priority: 'event'});",
+        ' return false;">',
+        '<span class="map-dot" style="background:%s"></span>%s',
+        '<span class="map-popup-link-val">%s</span>',
+        '<span class="map-arrow">&rarr;</span></a>'
+      ),
+      target,
+      line_colors[ln],
+      line_labels[ln],
+      if (is.na(avg)) "—" else fmt_n(avg)
+    )
+  }
+
+  map_station_info <- sf::st_drop_geometry(sf_stations_map)
+  map_per_line_df <- sf::st_drop_geometry(map_per_line) |>
+    semi_join(stations_by_line, by = c("line_number", "station_name"))
+
+  map_popup_html <- vapply(
+    seq_len(nrow(map_station_info)),
+    function(i) {
+      s <- map_station_info[i, ]
+      d <- map_per_line_df[map_per_line_df$station_name == s$station_name, ]
+      links <- if (nrow(d) > 0) {
+        paste0(
+          '<div class="map-popup-caption">Ver série mensal</div>',
+          paste(
+            vapply(
+              seq_len(nrow(d)),
+              function(j) {
+                map_line_link(d$line_number[j], d$station_name[j], d$avg_12m[j])
+              },
+              character(1)
+            ),
+            collapse = ""
+          )
+        )
+      } else {
+        ""
+      }
+      paste0(
+        '<div class="map-popup">',
+        '<div class="map-popup-title">',
+        s$station_name,
+        "</div>",
+        '<div class="map-popup-metrics">',
+        # same order and definitions as the KPI cards on the other tabs
+        map_metric_row(
+          "Último mês",
+          if (is.na(s$latest_month)) {
+            "—"
+          } else {
+            paste0(fmt_n(s$latest_month), " pass./dia útil")
+          }
+        ),
+        map_metric_row("Variação mensal (a/a)", fmt_pct(s$pct_mom)),
+        map_metric_row("Variação anual", fmt_pct(s$pct_yoy)),
+        map_metric_row("vs. 2019", fmt_pct(s$pct_2019)),
+        # replaced per redraw with the selected year's value in Demanda
+        # mode, stripped in the other modes
+        "{{YEAR_ROW}}",
+        # always disclose the reference month: lines 4/5 lag the rest of
+        # the network, so "último mês" is not the same month everywhere
+        if (!is.na(s$ref_date)) {
+          paste0(
+            '<div class="map-popup-note">dados até ',
+            fmt_month_pt(s$ref_date),
+            "</div>"
+          )
+        } else {
+          ""
+        },
+        "</div>",
+        '<div class="map-popup-links">',
+        links,
+        "</div></div>"
+      )
+    },
+    character(1)
+  )
+
+  map_lines_lbl <- vapply(
+    seq_len(nrow(map_station_info)),
+    function(i) {
+      s <- map_station_info[i, ]
+      if (s$n_lines == 1) {
+        unname(line_labels[s$first_line])
+      } else {
+        lines_i <- map_per_line_df$line_number[
+          map_per_line_df$station_name == s$station_name
+        ]
+        paste0("Linhas ", paste(sort(as.integer(lines_i)), collapse = " e "))
+      }
+    },
+    character(1)
+  )
+
+  map_hover_html <- lapply(seq_len(nrow(map_station_info)), function(i) {
+    s <- map_station_info[i, ]
+    demand <- if (is.na(s$avg_12m)) {
+      "Sem dados de demanda"
+    } else {
+      paste0("Média dias úteis: <b>", fmt_n(s$avg_12m), "</b> pass./dia")
+    }
+    htmltools::HTML(paste0(
+      "<b>",
+      s$station_name,
+      "</b><br/>",
+      map_lines_lbl[i],
+      "<br/>",
+      demand,
+      if (!is.na(s$ref_date)) {
+        paste0(
+          '<br/><span class="map-hover-note">dados até ',
+          fmt_month_pt(s$ref_date),
+          "</span>"
+        )
+      } else {
+        ""
+      }
+    ))
+  })
+
+  sf_stations_map$popup_html <- map_popup_html
+  sf_stations_map$lines_lbl <- map_lines_lbl
 }
 
 ## Available years for daily station data ----
@@ -325,7 +656,7 @@ ramp_windows <- metrosp::station_inauguration |>
 # pkgdown documentation. Computed from the data so it never drifts.
 dataset_info <- list(
   passengers_entrance = list(
-    label = "passengers_entrance (mensal)",
+    label = "Entrada de passageiros por linha (mensal)",
     desc = paste(
       "Passageiros entrando nas estações, agregado por linha.",
       "Inclui todas as métricas (coluna metric_abb), não apenas o total."
@@ -340,7 +671,7 @@ dataset_info <- list(
     source = "METRO SP / Insper Dataverse"
   ),
   passengers_transported = list(
-    label = "passengers_transported (mensal)",
+    label = "Passageiros transportados por linha (mensal)",
     desc = paste(
       "Passageiros transportados por linha por mês.",
       "Inclui todas as métricas (coluna metric_abb)."
@@ -355,7 +686,7 @@ dataset_info <- list(
     source = "METRO SP"
   ),
   station_averages = list(
-    label = "station_averages (mensal)",
+    label = "Média de embarques por estação (mensal)",
     desc = "Média de embarques em dias úteis por estação, mensal.",
     cols = names(metrosp::station_averages),
     rows = nrow(metrosp::station_averages),
@@ -367,7 +698,7 @@ dataset_info <- list(
     source = "METRO SP / Insper Dataverse"
   ),
   station_daily = list(
-    label = "station_daily (diário)",
+    label = "Embarques diários por estação",
     desc = "Embarques diários em cada estação do metrô.",
     cols = names(metrosp::station_daily),
     rows = nrow(metrosp::station_daily),
@@ -379,7 +710,7 @@ dataset_info <- list(
     source = "METRO SP / Insper Dataverse"
   ),
   lines_spatial = list(
-    label = "lines (espacial)",
+    label = "Traçados das linhas (espacial)",
     desc = paste(
       "Traçados de metrô e trem (CPTM), atuais e planejados",
       "(LINESTRING, WGS84)."
@@ -390,7 +721,7 @@ dataset_info <- list(
     source = "GeoSampa"
   ),
   stations_spatial = list(
-    label = "stations (espacial)",
+    label = "Estações do metrô (espacial)",
     desc = paste(
       "Ponto de cada estação de metrô e trem, atuais e planejadas",
       "(POINT, WGS84)."
@@ -445,13 +776,14 @@ download_card_configs <- list(
 
 make_download_card <- function(cfg) {
   info <- dataset_info[[cfg$key]]
-  size_label <- if (cfg$spatial) "Feições: " else "Linhas: "
+  # "Observações", not "Linhas": in this app "linhas" reads as subway lines
+  size_label <- if (cfg$spatial) "Feições: " else "Observações: "
   size_est <- if (!cfg$spatial && info$rows > 0) {
     bytes <- info$rows * length(info$cols) * 12
     if (bytes >= 1e6) {
-      sprintf("~%.1f MB", bytes / 1e6)
+      paste0("~", fmt_dec(bytes / 1e6, 1), " MB")
     } else {
-      sprintf("~%.0f KB", max(1, bytes / 1e3))
+      paste0("~", fmt_int(max(1, bytes / 1e3)), " KB")
     }
   }
   card(
@@ -460,11 +792,16 @@ make_download_card <- function(cfg) {
       tags$p(class = "small text-muted", info$desc),
       tags$p(
         class = "small",
+        # titles are human-readable, so keep the package dataset name
+        # visible for anyone loading metrosp directly
+        tags$b("Dataset: "),
+        tags$code(paste0("metrosp::", sub("_spatial$", "", cfg$key))),
+        tags$br(),
         tags$b("Colunas: "),
         paste(info$cols, collapse = ", "),
         tags$br(),
         tags$b(size_label),
-        format(info$rows, big.mark = "."),
+        fmt_int(info$rows),
         if (!is.null(info$range)) {
           tagList(tags$br(), tags$b("Período: "), info$range)
         },
