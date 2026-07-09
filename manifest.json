@@ -1840,14 +1840,14 @@
       }
     },
     "metrosp": {
-      "Source": "CRAN",
-      "Repository": "https://cloud.r-project.org",
+      "Source": "Repository",
+      "Repository": "https://viniciusoike.r-universe.dev",
       "description": {
         "Package": "metrosp",
         "Type": "Package",
         "Title": "São Paulo Metro Passenger Demand Data",
-        "Version": "1.0.0",
-        "Authors@R": "c(\n    person(\n      \"Vinicius\", \"Oike\",\n      email = \"viniciusoike@gmail.com\",\n      role = c(\"aut\", \"cre\", \"cph\")\n    )\n  )",
+        "Version": "1.1.0",
+        "Authors@R": "c(\n    person(\n      \"Vinicius\", \"Oike\",\n      email = \"viniciusoike@gmail.com\",\n      role = c(\"aut\", \"cre\", \"cph\"),\n      comment = c(ORCID = \"0009-0005-8015-9189\")\n    )\n  )",
         "Description": "Provides passenger demand data for the São Paulo metro system,\n    covering 2012 to 2026. Datasets include monthly passenger entries and\n    transported counts by line, average weekday station entries, daily\n    station entries, and spatial geometries for metro and commuter train\n    lines and stations.",
         "License": "MIT + file LICENSE",
         "Encoding": "UTF-8",
@@ -1862,10 +1862,10 @@
         "BugReports": "https://github.com/viniciusoike/metrosp/issues",
         "VignetteBuilder": "quarto",
         "NeedsCompilation": "no",
-        "Packaged": "2026-06-07 01:54:23 UTC; viniciusreginatto",
+        "Packaged": "2026-07-09 13:24:21 UTC; viniciusreginatto",
         "Author": "Vinicius Oike [aut, cre, cph]",
         "Maintainer": "Vinicius Oike <viniciusoike@gmail.com>",
-        "Built": "R 4.5.1; ; 2026-06-07 01:54:24 UTC; unix"
+        "Built": "R 4.5.1; ; 2026-07-09 13:24:21 UTC; unix"
       }
     },
     "mime": {

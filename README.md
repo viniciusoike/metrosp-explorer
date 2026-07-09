@@ -5,7 +5,7 @@
 [![Built with R](https://img.shields.io/badge/Built%20with-R-276DC3?logo=r&logoColor=white)](https://www.r-project.org/)
 [![Shiny](https://img.shields.io/badge/Shiny-bslib-447099?logo=rstudio&logoColor=white)](https://shiny.posit.co/)
 [![Deploy: Posit Connect Cloud](https://img.shields.io/badge/Deploy-Posit%20Connect%20Cloud-1A6EFF)](https://connect.posit.cloud/)
-[![Data: metrosp](https://img.shields.io/badge/Data-metrosp%20(CRAN)-success)](https://github.com/viniciusoike/metrosp)
+[![Data: metrosp](https://img.shields.io/badge/Data-metrosp%20(r--universe)-success)](https://viniciusoike.r-universe.dev/metrosp)
 <!-- badges: end -->
 
 An interactive dashboard for exploring passenger demand on the **São Paulo metro**,
@@ -37,17 +37,25 @@ shiny::runApp(".")
 
 ## Dependencies
 
-All dependencies are on CRAN:
+Most dependencies are on CRAN. `metrosp` is installed from
+[r-universe](https://viniciusoike.r-universe.dev/metrosp) because the current
+app requires v1.1.0, which is ahead of CRAN:
 
 ```r
-install.packages(c(
-  "shiny", "bslib", "bsicons", "dplyr", "leaflet", "echarts4r",
-  "sf", "htmltools", "htmlwidgets", "writexl", "readr",
-  # the data package itself
-  "metrosp",
-  # optional: enables the STL trend overlay (degrades gracefully if absent)
-  "trendseries"
-))
+install.packages(
+  c(
+    "shiny", "bslib", "bsicons", "dplyr", "leaflet", "echarts4r",
+    "sf", "htmltools", "htmlwidgets", "writexl", "readr",
+    # the data package itself (from r-universe)
+    "metrosp",
+    # optional: enables the STL trend overlay (degrades gracefully if absent)
+    "trendseries"
+  ),
+  repos = c(
+    "https://viniciusoike.r-universe.dev",
+    "https://cloud.r-project.org"
+  )
+)
 ```
 
 ## Deploy
@@ -70,26 +78,33 @@ at this repository and it deploys; no `rsconnect` push required.
 rsconnect::deployApp(appName = "metrosp-explorer")
 ```
 
-Every dependency (`metrosp`, `trendseries`, and the rest) is on CRAN, so any
-deploy target resolves them without GitHub access.
+Most dependencies are on CRAN. `metrosp` is resolved from r-universe (see
+`manifest.json`), so deploy targets need internet access to
+`viniciusoike.r-universe.dev`.
 
 ### Regenerating the manifest
 
 After changing the app's package usage, refresh the manifest and commit it:
 
 ```r
-rsconnect::writeManifest(appDir = ".")
+rsconnect::writeManifest(
+  appDir = ".",
+  repos = c(
+    "https://viniciusoike.r-universe.dev",
+    "https://cloud.r-project.org"
+  )
+)
 ```
 
-The manifest pins exact package versions, so they must be installable from CRAN
-at deploy time. If a dependency is ahead of CRAN locally, install the CRAN
-version before regenerating.
+The manifest pins exact package versions. `metrosp` is pinned to r-universe
+because v1.1.0 (which adds `station_inauguration`) is ahead of CRAN.
 
 ## Data source
 
 Demand data, line/station geometries, and inauguration dates come from the
-[metrosp](https://github.com/viniciusoike/metrosp) package (on CRAN). The STL
-trend overlay uses [trendseries](https://github.com/viniciusoike/trendseries).
+[metrosp](https://github.com/viniciusoike/metrosp) package (r-universe v1.1.0).
+The STL trend overlay uses
+[trendseries](https://github.com/viniciusoike/trendseries).
 
 ## License
 
