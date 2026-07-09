@@ -37,25 +37,15 @@ shiny::runApp(".")
 
 ## Dependencies
 
-Most dependencies are on CRAN. `metrosp` is installed from
-[r-universe](https://viniciusoike.r-universe.dev/metrosp) because the current
-app requires v1.1.0, which is ahead of CRAN:
+Dependencies are managed with [renv](https://rstudio.github.io/renv/). The
+lockfile (`renv.lock`) pins every package to an exact version and source.
+`metrosp` is pinned to [r-universe](https://viniciusoike.r-universe.dev/metrosp)
+because v1.1.1 (which adds `station_inauguration`) is ahead of CRAN.
+
+After cloning, restore the project library with:
 
 ```r
-install.packages(
-  c(
-    "shiny", "bslib", "bsicons", "dplyr", "leaflet", "echarts4r",
-    "sf", "htmltools", "htmlwidgets", "writexl", "readr",
-    # the data package itself (from r-universe)
-    "metrosp",
-    # optional: enables the STL trend overlay (degrades gracefully if absent)
-    "trendseries"
-  ),
-  repos = c(
-    "https://viniciusoike.r-universe.dev",
-    "https://cloud.r-project.org"
-  )
-)
+renv::restore()
 ```
 
 ## Deploy
@@ -68,9 +58,9 @@ deploys as a unit.
 ### Posit Connect Cloud (git-backed)
 
 [Connect Cloud](https://connect.posit.cloud/) publishes straight from this public
-GitHub repo. It reads `manifest.json` from the repo to restore the exact package
-set — so **`manifest.json` is tracked in git** (not ignored). Point Connect Cloud
-at this repository and it deploys; no `rsconnect` push required.
+GitHub repo. When it detects `renv.lock`, it calls `renv::restore()` to install
+packages — including `metrosp` from r-universe. `manifest.json` is still tracked
+for app-type metadata; no `rsconnect` push required.
 
 ### Classic Posit Connect / shinyapps.io
 
@@ -78,31 +68,18 @@ at this repository and it deploys; no `rsconnect` push required.
 rsconnect::deployApp(appName = "metrosp-explorer")
 ```
 
-Most dependencies are on CRAN. `metrosp` is resolved from r-universe (see
-`manifest.json`), so deploy targets need internet access to
-`viniciusoike.r-universe.dev`.
+### Updating the lockfile
 
-### Regenerating the manifest
-
-After changing the app's package usage, refresh the manifest and commit it:
+After adding or upgrading packages, re-snapshot and commit:
 
 ```r
-rsconnect::writeManifest(
-  appDir = ".",
-  repos = c(
-    "https://viniciusoike.r-universe.dev",
-    "https://cloud.r-project.org"
-  )
-)
+renv::snapshot()
 ```
-
-The manifest pins exact package versions. `metrosp` is pinned to r-universe
-because v1.1.0 (which adds `station_inauguration`) is ahead of CRAN.
 
 ## Data source
 
 Demand data, line/station geometries, and inauguration dates come from the
-[metrosp](https://github.com/viniciusoike/metrosp) package (r-universe v1.1.0).
+[metrosp](https://github.com/viniciusoike/metrosp) package (r-universe v1.1.1).
 The STL trend overlay uses
 [trendseries](https://github.com/viniciusoike/trendseries).
 

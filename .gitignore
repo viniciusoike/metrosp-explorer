@@ -6,5 +6,5 @@
 rsconnect/
 .DS_Store
 
-# manifest.json is intentionally tracked: Posit Connect (Cloud) deploys read it
-# from the repo. Regenerate with `rsconnect::writeManifest()` — see README.
+# manifest.json is intentionally tracked: Connect Cloud reads it for app metadata.
+# Package installation is handled by renv.lock (renv/.gitignore excludes the library).
