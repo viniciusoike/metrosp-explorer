@@ -28,14 +28,7 @@ jobs:
           sudo apt-get install -y \
             libgdal-dev libgeos-dev libproj-dev libudunits2-dev
 
-      - name: Install R package dependencies
-        shell: Rscript {0}
-        run: |
-          install.packages(c(
-            "shiny", "bslib", "bsicons", "dplyr", "leaflet", "echarts4r",
-            "sf", "htmltools", "htmlwidgets", "writexl", "readr",
-            "metrosp", "trendseries", "jsonlite"
-          ))
+      - uses: r-lib/actions/setup-renv@v2
 
       - name: App startup smoke check
         shell: Rscript {0}
