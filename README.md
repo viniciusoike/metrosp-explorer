@@ -8,12 +8,9 @@
 [![Data: metrosp](https://img.shields.io/badge/Data-metrosp%20(r--universe)-success)](https://viniciusoike.r-universe.dev/metrosp)
 <!-- badges: end -->
 
-An interactive dashboard for exploring passenger demand on the **São Paulo metro**,
+An interactive dashboard to explore passenger demand on the **São Paulo metro**,
 built with [Shiny](https://shiny.posit.co/) on top of the
 [metrosp](https://github.com/viniciusoike/metrosp) R data package.
-
-This is a **hosted standalone app**: it lives in its own repository and is
-deployed separately from the data package (it is not shipped inside it).
 
 ## Features
 
@@ -24,7 +21,7 @@ deployed separately from the data package (it is not shipped inside it).
 - **Interactive map** — four metric views: yearly demand with an animated year
   slider, year-over-year change, recovery vs. 2019, and the network by line.
   Station popups show KPIs and link straight to each station's series.
-- **Dataset downloads** — the package datasets verbatim, in CSV / Excel / GPKG /
+- **Dataset downloads** — the package datasets in CSV / Excel / GPKG /
   GeoJSON.
 
 ## Run locally
@@ -39,8 +36,8 @@ shiny::runApp(".")
 
 Dependencies are managed with [renv](https://rstudio.github.io/renv/). The
 lockfile (`renv.lock`) pins every package to an exact version and source.
-`metrosp` is pinned to [r-universe](https://viniciusoike.r-universe.dev/metrosp)
-because v1.1.1 (which adds `station_inauguration`) is ahead of CRAN.
+Note that `metrosp` is pinned to [r-universe](https://viniciusoike.r-universe.dev/metrosp)
+because it has more recent Metro data.
 
 After cloning, restore the project library with:
 
@@ -59,22 +56,8 @@ deploys as a unit.
 
 [Connect Cloud](https://connect.posit.cloud/) publishes straight from this public
 GitHub repo. When it detects `renv.lock`, it calls `renv::restore()` to install
-packages — including `metrosp` from r-universe. `manifest.json` is still tracked
-for app-type metadata; no `rsconnect` push required.
-
-### Classic Posit Connect / shinyapps.io
-
-```r
-rsconnect::deployApp(appName = "metrosp-explorer")
-```
-
-### Updating the lockfile
-
-After adding or upgrading packages, re-snapshot and commit:
-
-```r
-renv::snapshot()
-```
+packages. `manifest.json` is still tracked
+for app-type metadata.
 
 ## Data source
 
