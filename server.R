@@ -117,8 +117,8 @@ function(input, output, session) {
     validate(need(
       nrow(df) > 0,
       paste(
-        "Sem dados para a seleção atual. Verifique o período escolhido;",
-        "as linhas 4 e 5 não possuem dados de passageiros transportados."
+        "Sem dados para a seleção atual. Verifique o período escolhido.",
+        "As linhas 4 e 5 não têm dados de passageiros transportados."
       )
     ))
     lns <- input$lines_line
@@ -191,7 +191,7 @@ function(input, output, session) {
         "Sem dados para: ",
         paste(line_labels[missing], collapse = ", "),
         if (input$lines_metric == "transported") {
-          " (linhas 4 e 5 não possuem passageiros transportados)."
+          " (linhas 4 e 5 não têm dados de passageiros transportados)."
         } else {
           " no período selecionado."
         }
