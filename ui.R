@@ -76,7 +76,7 @@ function(request) {
             class = "text-muted small mb-0",
             "Dados mensais. ",
             if (HAS_TRENDSERIES) {
-              "Tendência extraída via decomposição STL robusta (s.window = 13)."
+              "Tendência estimada por decomposição STL robusta (s.window = 13)."
             } else {
               "Instale o pacote trendseries para habilitar tendência STL."
             }
@@ -265,7 +265,7 @@ function(request) {
             div(class = "empty-title", "Dados espaciais indisponíveis"),
             div(
               class = "empty-text",
-              "Não foi possível carregar os dados geográficos de linhas e estações."
+              "O app não conseguiu carregar os dados geográficos de linhas e estações."
             )
           )
         }
@@ -305,21 +305,21 @@ function(request) {
             tags$p(
               "O ",
               tags$b("metrosp"),
-              " é um pacote R de dados que disponibiliza ",
+              " é um pacote R que reúne ",
               sprintf(
-                "informações de demanda de passageiros do Metrô de São Paulo (%s–%s). ",
+                "dados de demanda de passageiros do Metrô de São Paulo (%s–%s). ",
                 format(DATA_MIN, "%Y"),
                 format(DATA_MAX, "%Y")
               )
             ),
             tags$p(
               sprintf(
-                "Este explorador cobre o período de %s a %s (a visualização padrão começa em %s), ",
+                "Este explorador cobre de %s a %s e os gráficos começam em %s por padrão. ",
                 fmt_month_pt(DATA_MIN),
                 fmt_month_pt(DATA_MAX),
                 fmt_month_pt(DEFAULT_START)
               ),
-              "permitindo visualização rápida e download em múltiplos formatos."
+              "A aba Download traz as bases completas em vários formatos."
             ),
             tags$h6("Links"),
             tags$ul(
@@ -382,10 +382,10 @@ function(request) {
               class = "small text-muted",
               tags$li("Linhas 4/5: passageiros transportados não disponíveis"),
               tags$li("Linhas 4/5: código de estação é NA"),
-              tags$li("2017: dados disponíveis apenas de outubro a dezembro"),
+              tags$li("2017: dados apenas de outubro a dezembro"),
               tags$li(
                 sprintf(
-                  "Meses após %s ainda não publicados pela fonte",
+                  "A fonte ainda não publicou os meses posteriores a %s",
                   fmt_month_pt(DATA_MAX)
                 )
               )

@@ -658,7 +658,7 @@ dataset_info <- list(
   passengers_entrance = list(
     label = "Entrada de passageiros por linha (mensal)",
     desc = paste(
-      "Passageiros entrando nas estações, agregado por linha.",
+      "Passageiros entrando nas estações, agregados por linha.",
       "Inclui todas as métricas (coluna metric_abb), não apenas o total."
     ),
     cols = names(metrosp::passengers_entrance),
@@ -673,7 +673,7 @@ dataset_info <- list(
   passengers_transported = list(
     label = "Passageiros transportados por linha (mensal)",
     desc = paste(
-      "Passageiros transportados por linha por mês.",
+      "Passageiros transportados em cada linha, por mês.",
       "Inclui todas as métricas (coluna metric_abb)."
     ),
     cols = names(metrosp::passengers_transported),
