@@ -426,29 +426,6 @@ function(input, output, session) {
         )
     }
 
-    # Shade opening + ramp-up window (excluded from baseline comparisons)
-    rw <- ramp_windows |>
-      filter(
-        line_number == input$sta_line,
-        station_name == input$sta_station,
-        ramp_up_end >= min(df$date)
-      )
-    if (nrow(rw) == 1) {
-      e <- e |>
-        e_mark_area(
-          data = list(
-            list(
-              xAxis = format(max(rw$inauguration_date, min(df$date))),
-              name = "Abertura / ramp-up"
-            ),
-            list(xAxis = format(rw$ramp_up_end))
-          ),
-          itemStyle = list(color = "rgba(184, 144, 0, 0.12)"),
-          label = list(color = "#8A6D00", fontSize = 11),
-          silent = TRUE
-        )
-    }
-
     e |> e_metro_defaults(grid_bottom = 50)
   })
 

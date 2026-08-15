@@ -645,12 +645,6 @@ sta_daily_years <- sta_daily |>
   distinct(line_number, station_name, year) |>
   arrange(line_number, station_name, desc(year))
 
-## Ramp-up windows (stations opened within the data window) ----
-ramp_windows <- metrosp::station_inauguration |>
-  filter(!is.na(inauguration_date), !is.na(ramp_up_end)) |>
-  mutate(line_number = as.character(line_number)) |>
-  select(line_number, station_name, inauguration_date, ramp_up_end)
-
 ## Dataset metadata for download tab ----
 # Downloads serve the package datasets as-is, so the schema here matches the
 # pkgdown documentation. Computed from the data so it never drifts.
