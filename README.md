@@ -23,8 +23,7 @@ the data package.
 
 - **Line-level demand** — monthly entrance/transported series per line, with KPIs
   and an optional STL trend overlay.
-- **Per-station series** — monthly weekday averages and daily counts, with
-  ramp-up shading around each station's inauguration.
+- **Per-station series** — monthly weekday averages and daily counts.
 - **Interactive map** — metric views for yearly demand with an animated year
   slider, year-over-year change, recovery vs. 2019, and the network by line.
   Station popups show KPIs and link to each station's series.
