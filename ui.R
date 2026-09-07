@@ -5,7 +5,10 @@
 function(request) {
   page_navbar(
     id = "main_nav",
-    title = tags$span(
+    # the brand is the page title, so it carries the h1 the card-header h2s
+    # need above them; .navbar-title resets the browser heading scale
+    title = tags$h1(
+      class = "navbar-title",
       bs_icon("train-front-fill", size = "1.05em", class = "me-2"),
       "Metro SP — Explorador de Dados"
     ),
@@ -14,7 +17,9 @@ function(request) {
     window_title = "Metro SP — Explorador de Dados",
     theme = metro_theme,
     lang = "pt-BR",
-    fillable = FALSE,
+    # the three chart tabs fill the viewport so the charts scale with the
+    # window; Download and Sobre stay as normal scrolling pages
+    fillable = c("linhas", "estacoes", "mapa"),
     header = tags$head(
       tags$link(rel = "stylesheet", href = "styles.css"),
       tags$meta(
@@ -53,13 +58,15 @@ function(request) {
             ),
             selected = "entrance"
           ),
-          dateInput(
-            "lines_start",
-            "Início da série",
-            value = DEFAULT_START,
-            min = DATA_MIN,
-            max = DATA_MAX,
-            language = "pt-BR"
+          div(
+            class = "pill-group",
+            radioButtons(
+              "lines_period",
+              "Período",
+              inline = TRUE,
+              choices = PERIOD_CHOICES,
+              selected = "2019"
+            )
           ),
           if (HAS_TRENDSERIES) {
             conditionalPanel(
@@ -89,6 +96,7 @@ function(request) {
           full_screen = TRUE,
           card_header(
             class = "d-flex align-items-center justify-content-between gap-2",
+            container = tags$h2,
             textOutput("lines_title", inline = TRUE),
             downloadButton(
               "dl_lines_csv",
@@ -101,7 +109,7 @@ function(request) {
               title = "Baixar CSV"
             )
           ),
-          echarts4rOutput("lines_chart", height = "480px"),
+          echarts4rOutput("lines_chart", height = "100%"),
           uiOutput("lines_note")
         )
       )
@@ -129,24 +137,22 @@ function(request) {
             choices = NULL,
             options = list(placeholder = "Buscar estação...")
           ),
-          dateInput(
-            "sta_start",
-            "Início da série",
-            value = DEFAULT_START,
-            min = DATA_MIN,
-            max = DATA_MAX,
-            language = "pt-BR"
+          div(
+            class = "pill-group",
+            radioButtons(
+              "sta_period",
+              "Período (série mensal)",
+              inline = TRUE,
+              choices = PERIOD_CHOICES,
+              selected = "2019"
+            )
           ),
           if (HAS_TRENDSERIES) {
             checkboxInput("sta_trend", "Mostrar tendência (STL)", value = FALSE)
           },
           hr(),
-          selectInput("sta_year", "Ano (série diária)", choices = NULL),
-          hr(),
           tags$p(
             class = "text-muted small mb-0",
-            "A data de início filtra o gráfico mensal. ",
-            "O seletor de ano controla o gráfico diário. ",
             if (HAS_TRENDSERIES) {
               "Tendência STL disponível para dados mensais."
             } else {
@@ -157,42 +163,69 @@ function(request) {
 
         uiOutput("sta_kpis"),
 
-        card(
-          full_screen = TRUE,
-          card_header(
-            class = "d-flex align-items-center justify-content-between gap-2",
-            textOutput("sta_monthly_title", inline = TRUE),
-            downloadButton(
-              "dl_sta_csv",
-              tagList(
-                bs_icon("download"),
-                tags$span(class = "visually-hidden", "Baixar CSV")
-              ),
-              icon = NULL,
-              class = "btn-sm btn-link p-1 download-icon",
-              title = "Baixar CSV"
-            )
-          ),
-          echarts4rOutput("sta_chart", height = "380px")
-        ),
+        # equal row heights: as plain siblings the two cards size to their
+        # content and the monthly chart ends up the shorter of the two
+        layout_columns(
+          col_widths = 12,
+          row_heights = c(1, 1),
 
-        card(
-          full_screen = TRUE,
-          card_header(
-            class = "d-flex align-items-center justify-content-between gap-2",
-            textOutput("sta_daily_title", inline = TRUE),
-            downloadButton(
-              "dl_sta_daily_csv",
+          card(
+            full_screen = TRUE,
+            card_header(
+              class = "d-flex align-items-center justify-content-between gap-2",
+              container = tags$h2,
+              textOutput("sta_monthly_title", inline = TRUE),
+              downloadButton(
+                "dl_sta_csv",
               tagList(
                 bs_icon("download"),
-                tags$span(class = "visually-hidden", "Baixar CSV")
-              ),
-              icon = NULL,
-              class = "btn-sm btn-link p-1 download-icon",
-              title = "Baixar CSV"
-            )
+                  tags$span(class = "visually-hidden", "Baixar CSV")
+                ),
+                icon = NULL,
+                class = "btn-sm btn-link p-1 download-icon",
+                title = "Baixar CSV"
+              )
+            ),
+            echarts4rOutput("sta_chart", height = "100%")
           ),
-          echarts4rOutput("sta_daily_chart", height = "320px")
+
+          card(
+            full_screen = TRUE,
+            card_header(
+              class = "d-flex align-items-center justify-content-between gap-2",
+              container = tags$h2,
+              textOutput("sta_daily_title", inline = TRUE),
+              # the year selector lives with the chart it drives, not in the
+              # sidebar next to the monthly period filter
+              div(
+                class = "header-controls",
+                div(
+                  class = "header-select",
+                  selectInput(
+                    "sta_year",
+                    # the header already reads "Série diária (2025)"
+                    tags$span(class = "visually-hidden", "Ano da série diária"),
+                    choices = NULL,
+                    # plain <select>: a year list needs no search box, and
+                    # selectize ignores the .form-select styling
+                    selectize = FALSE,
+                    width = "110px"
+                  )
+                ),
+                downloadButton(
+                  "dl_sta_daily_csv",
+                  tagList(
+                    bs_icon("download"),
+                    tags$span(class = "visually-hidden", "Baixar CSV")
+                  ),
+                  icon = NULL,
+                  class = "btn-sm btn-link p-1 download-icon",
+                  title = "Baixar CSV"
+                )
+              )
+            ),
+            echarts4rOutput("sta_daily_chart", height = "100%")
+          )
         )
       )
     ),
@@ -207,6 +240,7 @@ function(request) {
         full_screen = TRUE,
         card_header(
           class = "d-flex align-items-center justify-content-between gap-3 flex-wrap",
+          container = tags$h2,
           div(
             "Linhas e estações do Metrô de São Paulo",
             tags$small(
@@ -215,7 +249,7 @@ function(request) {
             )
           ),
           div(
-            class = "map-toolbar",
+            class = "pill-group",
             radioButtons(
               "map_metric",
               NULL,
@@ -256,7 +290,7 @@ function(request) {
                 )
               )
             },
-            leafletOutput("map", height = "600px")
+            leafletOutput("map", height = "100%")
           )
         } else {
           div(
@@ -278,7 +312,7 @@ function(request) {
       value = "download",
       icon = bs_icon("download"),
 
-      div(
+      tags$h2(
         class = "section-label",
         "Datasets disponíveis"
       ),
@@ -300,7 +334,7 @@ function(request) {
         width = 1 / 2,
 
         card(
-          card_header("Sobre o pacote metrosp"),
+          card_header("Sobre o pacote metrosp", container = tags$h2),
           card_body(
             tags$p(
               "O ",
@@ -321,7 +355,7 @@ function(request) {
               ),
               "A aba Download traz as bases completas em vários formatos."
             ),
-            tags$h6("Links"),
+            tags$h3(class = "card-subhead", "Links"),
             tags$ul(
               tags$li(tags$a(
                 href = "https://github.com/viniciusoike/metrosp",
@@ -344,15 +378,15 @@ function(request) {
                 "Reportar problema"
               ))
             ),
-            tags$h6("Licença"),
+            tags$h3(class = "card-subhead", "Licença"),
             tags$p(class = "small text-muted", "MIT")
           )
         ),
 
         card(
-          card_header("Fontes de dados"),
+          card_header("Fontes de dados", container = tags$h2),
           card_body(
-            tags$h6("Demanda de passageiros"),
+            tags$h3(class = "card-subhead", "Demanda de passageiros"),
             tags$ul(
               class = "small",
               tags$li(
@@ -368,7 +402,7 @@ function(request) {
                 "Insper Dataverse (doi:10.60873/FK2/UTGQ0I)"
               )
             ),
-            tags$h6("Dados espaciais"),
+            tags$h3(class = "card-subhead", "Dados espaciais"),
             tags$ul(
               class = "small",
               tags$li(tags$a(
@@ -377,7 +411,7 @@ function(request) {
                 "GeoSampa — Prefeitura de São Paulo"
               ))
             ),
-            tags$h6("Limitações conhecidas"),
+            tags$h3(class = "card-subhead", "Limitações conhecidas"),
             tags$ul(
               class = "small text-muted",
               tags$li("Linhas 4/5: passageiros transportados não disponíveis"),

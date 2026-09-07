@@ -8,7 +8,7 @@ function(input, output, session) {
     lns <- input$lines_line
     req(length(lns) > 0)
 
-    start <- date_or(input$lines_start, DEFAULT_START)
+    start <- period_start(input$lines_period)
     base <- if (input$lines_metric == "entrance") ent else trans
     df <- base |> filter(line_number %in% lns, date >= start)
 
@@ -38,7 +38,7 @@ function(input, output, session) {
     bindCache(
       input$lines_line,
       input$lines_metric,
-      input$lines_start,
+      input$lines_period,
       input$lines_trend
     )
 
@@ -62,23 +62,25 @@ function(input, output, session) {
       filter(date > latest$date - 730, date <= latest$date - 365)
     base_2019 <- monthly |> filter(format(date, "%Y") == "2019")
 
-    yoy_label <- if (nrow(recent) >= 6 && nrow(prior) >= 6) {
-      fmt_pct((mean(recent$value) / mean(prior$value) - 1) * 100)
+    # NA where there is not enough history; fmt_pct() and kpi_tone() both
+    # degrade to "—" / neutral from there
+    yoy <- if (nrow(recent) >= 6 && nrow(prior) >= 6) {
+      (mean(recent$value) / mean(prior$value) - 1) * 100
     } else {
-      "—"
+      NA_real_
     }
-    vs2019_label <- if (nrow(recent) >= 6 && nrow(base_2019) >= 6) {
-      fmt_pct((mean(recent$value) / mean(base_2019$value) - 1) * 100)
+    vs2019 <- if (nrow(recent) >= 6 && nrow(base_2019) >= 6) {
+      (mean(recent$value) / mean(base_2019$value) - 1) * 100
     } else {
-      "—"
+      NA_real_
     }
     # same calendar month one year earlier (monthly dates, so exact match)
     prev_month_date <- seq(latest$date, by = "-1 year", length.out = 2)[2]
     prev_month <- monthly |> filter(date == prev_month_date)
-    mom_yoy_label <- if (nrow(prev_month) == 1 && prev_month$value > 0) {
-      fmt_pct((latest$value / prev_month$value - 1) * 100)
+    mom_yoy <- if (nrow(prev_month) == 1 && prev_month$value > 0) {
+      (latest$value / prev_month$value - 1) * 100
     } else {
-      "—"
+      NA_real_
     }
 
     div(
@@ -86,15 +88,26 @@ function(input, output, session) {
       kpi_card("Último mês", fmt_n(latest$value), fmt_month_pt(latest$date)),
       kpi_card(
         "Variação mensal (a/a)",
-        mom_yoy_label,
+        fmt_pct(mom_yoy),
         paste0(
           fmt_month_pt(latest$date),
           " vs. ",
           fmt_month_pt(prev_month_date)
-        )
+        ),
+        tone = kpi_tone(mom_yoy)
       ),
-      kpi_card("Variação anual", yoy_label, "últimos 12m vs. anteriores"),
-      kpi_card("vs. 2019", vs2019_label, "últimos 12m vs. média de 2019")
+      kpi_card(
+        "Variação anual",
+        fmt_pct(yoy),
+        "últimos 12m vs. anteriores",
+        tone = kpi_tone(yoy)
+      ),
+      kpi_card(
+        "vs. 2019",
+        fmt_pct(vs2019),
+        "últimos 12m vs. média de 2019",
+        tone = kpi_tone(vs2019)
+      )
     )
   })
 
@@ -174,7 +187,8 @@ function(input, output, session) {
         e_color(cols)
     }
 
-    e |> e_metro_defaults()
+    # a single observed series is already named by the card header
+    e |> e_metro_defaults(legend = length(lns) > 1 || show_trend)
   })
 
   output$lines_note <- renderUI({
@@ -260,7 +274,7 @@ function(input, output, session) {
     sta <- input$sta_station
     req(ln, sta)
 
-    start <- date_or(input$sta_start, DEFAULT_START)
+    start <- period_start(input$sta_period)
     df <- sta_avg |>
       filter(line_number == ln, station_name == sta, date >= start)
     show_trend <- isTRUE(input$sta_trend) && HAS_TRENDSERIES
@@ -295,7 +309,7 @@ function(input, output, session) {
     bindCache(
       input$sta_line,
       input$sta_station,
-      input$sta_start,
+      input$sta_period,
       input$sta_trend
     )
 
@@ -312,8 +326,15 @@ function(input, output, session) {
   output$sta_kpis <- renderUI({
     req(input$sta_station, input$sta_line)
 
-    df_monthly <- sta_monthly_data()
-    req(nrow(df_monthly) > 0)
+    # full series (not period-filtered) so the KPIs describe the station
+    # rather than the visible window, as on the Linhas tab
+    mo_full <- sta_avg |>
+      filter(
+        line_number == input$sta_line,
+        station_name == input$sta_station,
+        !is.na(value)
+      )
+    req(nrow(mo_full) > 0)
     yr <- input$sta_year
     # Reuse the daily reactive (same line/station/year filter) instead of
     # re-filtering sta_daily, so the KPI and the daily chart can't diverge
@@ -333,23 +354,15 @@ function(input, output, session) {
       "—"
     }
 
-    # full series (not start-date filtered) so the prior-year month is
-    # available even when the visible window is shorter than 12 months
-    mo_full <- sta_avg |>
-      filter(
-        line_number == input$sta_line,
-        station_name == input$sta_station,
-        !is.na(value)
-      )
     latest_mo <- mo_full |> slice_max(date, n = 1)
-    mom_yoy_val <- "—"
+    mom_yoy <- NA_real_
     mom_yoy_sub <- ""
     if (nrow(latest_mo) == 1) {
       # same calendar month one year earlier (monthly dates, so exact match)
       prev_mo_date <- seq(latest_mo$date, by = "-1 year", length.out = 2)[2]
       prev_mo <- mo_full |> filter(date == prev_mo_date)
       if (nrow(prev_mo) == 1 && prev_mo$value > 0) {
-        mom_yoy_val <- fmt_pct((latest_mo$value / prev_mo$value - 1) * 100)
+        mom_yoy <- (latest_mo$value / prev_mo$value - 1) * 100
       }
       mom_yoy_sub <- paste0(
         fmt_month_pt(latest_mo$date),
@@ -358,18 +371,14 @@ function(input, output, session) {
       )
     }
 
-    latest <- max(df_monthly$date, na.rm = TRUE)
-    recent <- df_monthly |> filter(date > latest - 365, !is.na(value))
-    prior <- df_monthly |>
-      filter(date > latest - 730, date <= latest - 365, !is.na(value))
-    yoy_label <- if (nrow(recent) >= 6 && nrow(prior) >= 6) {
-      yoy <- (mean(recent$value, na.rm = TRUE) /
-        mean(prior$value, na.rm = TRUE) -
-        1) *
+    latest <- max(mo_full$date, na.rm = TRUE)
+    recent <- mo_full |> filter(date > latest - 365)
+    prior <- mo_full |> filter(date > latest - 730, date <= latest - 365)
+    yoy <- if (nrow(recent) >= 6 && nrow(prior) >= 6) {
+      (mean(recent$value, na.rm = TRUE) / mean(prior$value, na.rm = TRUE) - 1) *
         100
-      fmt_pct(yoy)
     } else {
-      "—"
+      NA_real_
     }
 
     yr_label <- if (!is.null(yr) && nzchar(yr)) yr else ""
@@ -386,8 +395,18 @@ function(input, output, session) {
         we_avg,
         paste0("embarques/dia — ", yr_label)
       ),
-      kpi_card("Variação mensal (a/a)", mom_yoy_val, mom_yoy_sub),
-      kpi_card("Variação anual", yoy_label, "últimos 12m vs. anteriores")
+      kpi_card(
+        "Variação mensal (a/a)",
+        fmt_pct(mom_yoy),
+        mom_yoy_sub,
+        tone = kpi_tone(mom_yoy)
+      ),
+      kpi_card(
+        "Variação anual",
+        fmt_pct(yoy),
+        "últimos 12m vs. anteriores",
+        tone = kpi_tone(yoy)
+      )
     )
   })
 
@@ -426,7 +445,7 @@ function(input, output, session) {
         )
     }
 
-    e |> e_metro_defaults(grid_bottom = 50)
+    e |> e_metro_defaults(legend = show_trend)
   })
 
   output$sta_daily_title <- renderText({
@@ -467,9 +486,7 @@ function(input, output, session) {
         )
     }
 
-    e |>
-      e_metro_defaults(grid_bottom = 50) |>
-      e_legend(top = 0, itemWidth = 12, itemHeight = 6)
+    e |> e_metro_defaults()
   })
 
   output$dl_sta_csv <- downloadHandler(

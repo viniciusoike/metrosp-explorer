@@ -114,9 +114,23 @@ fmt_pct <- function(x, signed = TRUE) {
   )
 }
 
-kpi_card <- function(label, value, sub = NULL) {
+# Sign of a change metric, as a CSS modifier. Absolute levels ("último mês")
+# have no sign to convey and stay neutral.
+kpi_tone <- function(x) {
+  if (length(x) != 1 || is.na(x)) {
+    "neutral"
+  } else if (x > 0) {
+    "pos"
+  } else if (x < 0) {
+    "neg"
+  } else {
+    "neutral"
+  }
+}
+
+kpi_card <- function(label, value, sub = NULL, tone = "neutral") {
   div(
-    class = "kpi",
+    class = paste0("kpi kpi--", tone),
     div(class = "kpi-label", label),
     div(class = "kpi-value", value),
     if (!is.null(sub)) div(class = "kpi-sub", sub)
@@ -162,12 +176,6 @@ fmt_month_pt <- function(x) {
   )
 }
 
-# A cleared dateInput returns a length-0 Date (not NULL), so `%||%` alone
-# does not catch it
-date_or <- function(x, default) {
-  if (length(x) == 1 && !is.na(x)) x else default
-}
-
 # echarts4r JS formatters ----
 
 # Mirrors fmt_n(): mil/mi/bi with a decimal comma
@@ -199,7 +207,10 @@ js_tooltip_pt_br <- htmlwidgets::JS(
 
 # echarts4r shared defaults ----
 
-e_metro_defaults <- function(e, grid_bottom = 70) {
+# The legend sits at the top: the datazoom slider owns the bottom strip
+# (bottom 8 + height 20), and a bottom legend lands on top of it. Charts with
+# a single series pass legend = FALSE, since the card header already names it.
+e_metro_defaults <- function(e, legend = TRUE) {
   e |>
     e_x_axis(type = "time") |>
     e_y_axis(
@@ -207,8 +218,13 @@ e_metro_defaults <- function(e, grid_bottom = 70) {
       splitLine = list(lineStyle = list(color = "#EDEEF3"))
     ) |>
     e_tooltip(trigger = "axis", formatter = js_tooltip_pt_br) |>
-    e_legend(bottom = 0, itemWidth = 14, itemHeight = 8) |>
-    e_grid(left = 60, right = 24, top = 20, bottom = grid_bottom) |>
+    e_legend(show = legend, top = 0, itemWidth = 14, itemHeight = 8) |>
+    e_grid(
+      left = 60,
+      right = 24,
+      top = if (legend) 34 else 16,
+      bottom = 56
+    ) |>
     e_datazoom(type = "inside") |>
     e_datazoom(type = "slider", bottom = 8, height = 20) |>
     e_toolbox_feature(feature = "saveAsImage", title = "Salvar")
@@ -281,6 +297,30 @@ sta_daily <- metrosp::station_daily |>
 ## Data window (drives copy, input limits, freshness stamp) ----
 DATA_MIN <- min(ent$date, na.rm = TRUE)
 DATA_MAX <- max(c(ent$date, sta_daily$date), na.rm = TRUE)
+
+## Period presets ----
+# The series are monthly, so a day-granular dateInput offered precision the
+# data does not have. These anchor on DATA_MAX rather than Sys.Date() so the
+# window does not drift past the last published month.
+PERIOD_CHOICES <- c(
+  "12 meses" = "12m",
+  "5 anos" = "5a",
+  "Desde 2019" = "2019",
+  "Tudo" = "tudo"
+)
+
+period_start <- function(period) {
+  back <- function(n) {
+    seq(DATA_MAX, by = paste0("-", n, " years"), length.out = 2)[2]
+  }
+  switch(
+    period %||% "2019",
+    "12m" = back(1),
+    "5a" = back(5),
+    "tudo" = DATA_MIN,
+    DEFAULT_START
+  )
+}
 
 ## Spatial data ----
 sf_lines <- tryCatch(
@@ -781,7 +821,7 @@ make_download_card <- function(cfg) {
     }
   }
   card(
-    card_header(info$label),
+    card_header(info$label, container = tags$h3),
     card_body(
       tags$p(class = "small text-muted", info$desc),
       tags$p(
