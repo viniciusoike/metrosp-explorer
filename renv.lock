@@ -2189,12 +2189,12 @@
     },
     "metrosp": {
       "Package": "metrosp",
-      "Version": "1.1.1",
+      "Version": "1.2.1",
       "Source": "Repository",
       "Type": "Package",
       "Title": "São Paulo Metro Passenger Demand Data",
       "Authors@R": "c( person( \"Vinicius\", \"Oike\", email = \"viniciusoike@gmail.com\", role = c(\"aut\", \"cre\", \"cph\"), comment = c(ORCID = \"0009-0005-8015-9189\") ) )",
-      "Description": "Provides passenger demand data for the São Paulo metro system, covering 2012 to 2026. Datasets include monthly passenger entries and transported counts by line, average weekday station entries, daily station entries, and spatial geometries for metro and commuter train lines and stations.",
+      "Description": "Provides passenger demand data for the São Paulo metro system, covering 2012 to 2026. Datasets include monthly passenger entries and transported counts by line, average weekday station entries, daily station entries, and spatial geometries for metro and commuter train lines and stations. The bundled datasets are a fixed snapshot, so analyses stay reproducible and examples run offline; more recent data is published separately as the upstream sources are updated.",
       "License": "MIT + file LICENSE",
       "Encoding": "UTF-8",
       "Language": "en-US",
@@ -2202,12 +2202,21 @@
       "Depends": [
         "R (>= 3.5.0)"
       ],
+      "Imports": [
+        "cli",
+        "jsonlite",
+        "tools",
+        "utils"
+      ],
       "Suggests": [
         "bizdays",
+        "spelling",
         "dataverse",
-        "dplyr",
+        "digest",
+        "dplyr (>= 1.2.0)",
         "ggplot2",
         "knitr",
+        "piggyback",
         "quarto",
         "rmarkdown",
         "sf",
@@ -2226,7 +2235,7 @@
       "Repository": "https://viniciusoike.r-universe.dev",
       "RemoteUrl": "https://github.com/viniciusoike/metrosp",
       "RemoteRef": "HEAD",
-      "RemoteSha": "885ed2173ea97112d2e77aa19650b12f3e47ebc4",
+      "RemoteSha": "bde52afefe92af1f7de36073e4c2238416d50dfe",
       "NeedsCompilation": "no",
       "Author": "Vinicius Oike [aut, cre, cph] (ORCID: <https://orcid.org/0009-0005-8015-9189>)",
       "Maintainer": "Vinicius Oike <viniciusoike@gmail.com>"
