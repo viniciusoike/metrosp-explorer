@@ -21,11 +21,11 @@ library(readr)
 # encoding conversion under a UTF-8 locale; a C/ASCII locale turns "—" into a
 # literal "<U+2014>". Try a few common UTF-8 locales; harmless where one is
 # already active, and a no-op if none can be set.
-if (!isTRUE(l10n_info()[["UTF-8"]])) {
-  for (loc in c("en_US.UTF-8", "C.UTF-8", "en_US.utf8", "C.utf8")) {
-    if (nzchar(suppressWarnings(Sys.setlocale("LC_CTYPE", loc)))) break
-  }
-}
+# if (!isTRUE(l10n_info()[["UTF-8"]])) {
+#   for (loc in c("en_US.UTF-8", "C.UTF-8", "en_US.utf8", "C.utf8")) {
+#     if (nzchar(suppressWarnings(Sys.setlocale("LC_CTYPE", loc)))) break
+#   }
+# }
 
 enableBookmarking("url")
 
@@ -64,7 +64,13 @@ if (!exists("%||%")) {
   `%||%` <- function(a, b) if (is.null(a)) b else a
 }
 
-metro_primary <- "#171796"
+# EKIO brand chrome (ekioplot "ekio_brand" and "blue" palettes). Line colors
+# above are METRO SP brand colors and stay as they are.
+metro_primary <- "#225A7E"
+metro_ink <- "#0D1B2A"
+metro_ink_soft <- "#3C3935"
+metro_page <- "#F2EDE2"
+metro_grid <- "#E6E0D4"
 
 # Formatting helpers ----
 # pt-BR numbers everywhere: "." thousands, "," decimals, mil/mi/bi
@@ -191,14 +197,26 @@ js_axis_label_compact <- htmlwidgets::JS(
 js_tooltip_pt_br <- htmlwidgets::JS(
   "function(params) {",
   "  if (!Array.isArray(params)) params = [params];",
-  "  var t = '<div style=\"font-weight:600;margin-bottom:4px;color:#0E1130\">' + params[0].axisValueLabel + '</div>';",
+  paste0(
+    "  var t = '<div style=\"font-weight:600;margin-bottom:4px;color:",
+    metro_ink,
+    "\">' + params[0].axisValueLabel + '</div>';"
+  ),
   "  params.forEach(function(p) {",
   "    var v = (typeof p.value === 'object' ? p.value[1] : p.value);",
   "    var label = v != null ? v.toLocaleString('pt-BR', {maximumFractionDigits: 1}) : '—';",
   "    t += '<div style=\"display:flex;align-items:center;gap:6px;\">';",
   "    t += '<span style=\"display:inline-block;width:8px;height:8px;border-radius:50%;background:' + p.color + '\"></span>';",
-  "    t += '<span style=\"color:#4A4F6B\">' + p.seriesName + '</span>';",
-  "    t += '<span style=\"margin-left:auto;font-weight:600;color:#0E1130\">' + label + '</span>';",
+  paste0(
+    "    t += '<span style=\"color:",
+    metro_ink_soft,
+    "\">' + p.seriesName + '</span>';"
+  ),
+  paste0(
+    "    t += '<span style=\"margin-left:auto;font-weight:600;color:",
+    metro_ink,
+    "\">' + label + '</span>';"
+  ),
   "    t += '</div>';",
   "  });",
   "  return t;",
@@ -215,7 +233,7 @@ e_metro_defaults <- function(e, legend = TRUE) {
     e_x_axis(type = "time") |>
     e_y_axis(
       axisLabel = list(formatter = js_axis_label_compact),
-      splitLine = list(lineStyle = list(color = "#EDEEF3"))
+      splitLine = list(lineStyle = list(color = metro_grid))
     ) |>
     e_tooltip(trigger = "axis", formatter = js_tooltip_pt_br) |>
     e_legend(show = legend, top = 0, itemWidth = 14, itemHeight = 8) |>
@@ -226,27 +244,86 @@ e_metro_defaults <- function(e, legend = TRUE) {
       bottom = 56
     ) |>
     e_datazoom(type = "inside") |>
-    e_datazoom(type = "slider", bottom = 8, height = 20) |>
+    e_datazoom(
+      type = "slider",
+      bottom = 8,
+      height = 20,
+      borderColor = metro_grid,
+      fillerColor = "rgba(34, 90, 126, 0.12)",
+      dataBackground = list(
+        lineStyle = list(color = "#B4B0AB"),
+        areaStyle = list(color = metro_grid)
+      ),
+      handleStyle = list(color = "#FBFAF3", borderColor = metro_primary),
+      moveHandleStyle = list(color = metro_grid),
+      selectedDataBackground = list(
+        lineStyle = list(color = metro_primary),
+        areaStyle = list(color = "rgba(34, 90, 126, 0.15)")
+      )
+    ) |>
     e_toolbox_feature(feature = "saveAsImage", title = "Salvar")
 }
 
 # bslib theme ----
 
+APP_FONT <- "Inter"
+
 metro_theme <- bs_theme(
   version = 5,
   bootswatch = NULL,
   primary = metro_primary,
-  secondary = "#4A4F6B",
-  success = "#2E7D32",
-  danger = "#C62828",
-  info = "#1565C0",
-  warning = "#B89000",
-  base_font = font_google("Inter", local = FALSE),
-  heading_font = font_google("Inter", local = FALSE),
-  bg = "#F7F8FB",
-  fg = "#0E1130",
+  secondary = "#59544F",
+  success = "#006261",
+  danger = "#B44D47",
+  info = "#3E76AC",
+  warning = "#B88715",
+  # without wght Google Fonts serves only the regular face, and every 500,
+  # 600 and 700 in styles.css becomes a synthetic bold
+  base_font = font_google(
+    APP_FONT,
+    local = FALSE,
+    wght = c(400, 500, 600, 700)
+  ),
+  heading_font = font_google(
+    APP_FONT,
+    local = FALSE,
+    wght = c(400, 500, 600, 700)
+  ),
+  bg = metro_page,
+  fg = metro_ink,
   "min-contrast-ratio" = 4.1
 )
+
+# Basemap tiles ----
+# CARTO tiles now need an API key. addProviderTiles() drops the `key` option
+# because leaflet.providers 2.0.0 has no {key} slot in the CartoDB template
+# (rstudio/leaflet#965), so build the tile layer by hand. The key is
+# restricted by referrer in the CARTO dashboard; without it (or from a domain
+# outside the allowlist) tiles come back watermarked or 403.
+
+CARTO_KEY <- Sys.getenv("CARTO_BASEMAP_SHINY")
+
+add_carto_tiles <- function(map, variant = "light_all") {
+  url <- paste0(
+    "https://{s}.basemaps.cartocdn.com/",
+    variant,
+    "/{z}/{x}/{y}{r}.png"
+  )
+  if (nzchar(CARTO_KEY)) {
+    url <- paste0(url, "?key=", CARTO_KEY)
+  }
+
+  map <- addTiles(
+    map,
+    urlTemplate = url,
+    attribution = paste(
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      'contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    ),
+    options = tileOptions(subdomains = "abcd", maxZoom = 20)
+  )
+  return(map)
+}
 
 # trendseries (optional): graceful degradation ----
 
@@ -257,10 +334,6 @@ if (!HAS_TRENDSERIES) {
     "Install with: pak::pak(\"viniciusoike/trendseries\")"
   )
 }
-
-# Constants ----
-
-DEFAULT_START <- as.Date("2019-01-01")
 
 # Pre-build data ----
 
@@ -274,12 +347,14 @@ ent <- metrosp::passengers_entrance |>
   select(date, line_number, value, year)
 
 ## Line-level monthly (transported) ----
+# the package publishes transported counts in thousands; the app counts
+# individual passengers everywhere, as passengers_entrance does
 trans <- metrosp::passengers_transported |>
   filter(
     metric_abb == "total",
     line_number %in% as.integer(LINES)
   ) |>
-  mutate(line_number = as.character(line_number)) |>
+  mutate(line_number = as.character(line_number), value = value * 1000) |>
   select(date, line_number, value, year)
 
 ## Station averages (monthly weekday avg) ----
@@ -300,26 +375,24 @@ DATA_MAX <- max(c(ent$date, sta_daily$date), na.rm = TRUE)
 
 ## Period presets ----
 # The series are monthly, so a day-granular dateInput offered precision the
-# data does not have. These anchor on DATA_MAX rather than Sys.Date() so the
-# window does not drift past the last published month.
+# data does not have. These anchor on the last published month rather than
+# Sys.Date() so the window does not drift past the data. Unknown values (old
+# bookmarks) fall back to the full series.
 PERIOD_CHOICES <- c(
+  "Desde o início" = "inicio",
   "12 meses" = "12m",
-  "5 anos" = "5a",
-  "Desde 2019" = "2019",
-  "Tudo" = "tudo"
+  "24 meses" = "24m"
 )
 
 period_start <- function(period) {
-  back <- function(n) {
-    seq(DATA_MAX, by = paste0("-", n, " years"), length.out = 2)[2]
+  n_months <- switch(period %||% "inicio", "12m" = 12L, "24m" = 24L, NULL)
+  if (is.null(n_months)) {
+    return(DATA_MIN)
   }
-  switch(
-    period %||% "2019",
-    "12m" = back(1),
-    "5a" = back(5),
-    "tudo" = DATA_MIN,
-    DEFAULT_START
-  )
+  # first-of-month anchor: stepping back by month from a 31st overflows
+  last_month <- as.Date(format(DATA_MAX, "%Y-%m-01"))
+  start <- seq(last_month, by = "-1 month", length.out = n_months)[n_months]
+  return(start)
 }
 
 ## Spatial data ----
@@ -353,11 +426,11 @@ stations_by_line <- sta_avg |>
 ## Map palettes ----
 # Line colors are METRO SP brand colors (fixed). In the comparison modes the
 # lines dim to neutral gray so the metric ramp owns the hue channel.
-map_line_neutral <- "#C3C6D1"
-map_na_color <- "#CDD0DA"
+map_line_neutral <- "#C9C3B8"
+map_na_color <- "#B9B3A9"
 
-# Sequential: single-hue ramp on the metro blue, light -> dark
-map_seq_colors <- c("#C6CDF0", "#98A3E2", "#6B79D0", "#3F49B8", "#171796")
+# Sequential: ekioplot "blue" ramp, light -> dark
+map_seq_colors <- c("#B1D8F2", "#84B8DD", "#5597CC", "#3E76AC", "#1E3A5F")
 map_seq_breaks <- c(0, 10e3, 25e3, 50e3, 100e3, Inf)
 map_seq_labels <- c(
   "até 10 mil",
@@ -367,15 +440,16 @@ map_seq_labels <- c(
   "mais de 100 mil"
 )
 
-# Diverging: ColorBrewer RdBu (CVD-safe), neutral gray midpoint at ~0
+# Diverging: ekioplot "blue_red" (red-blue stays CVD-safe), reversed so
+# losses are red, trimmed to seven steps around a neutral midpoint at ~0
 map_div_colors <- c(
-  "#B2182B",
-  "#D6604D",
-  "#F4A582",
-  "#E6E6E6",
-  "#92C5DE",
-  "#4393C3",
-  "#2166AC"
+  "#8C3431",
+  "#B44D47",
+  "#E9998E",
+  "#F5F3EF",
+  "#84B8DD",
+  "#3E76AC",
+  "#305687"
 )
 map_div_breaks <- list(
   vs2019 = c(-Inf, -30, -15, -5, 5, 15, 30, Inf),
@@ -684,6 +758,197 @@ if (!is.null(sf_stations)) {
 sta_daily_years <- sta_daily |>
   distinct(line_number, station_name, year) |>
   arrange(line_number, station_name, desc(year))
+
+## Selection info boxes ----
+# Definitions and sources follow the metrosp documentation
+# (?passengers_entrance, ?passengers_transported, ?station_averages,
+# ?station_daily); coverage dates are computed from the data.
+
+metric_info <- list(
+  entrance = list(
+    label = "Embarques (entrada)",
+    definition = paste(
+      "Passageiros que entraram pelas catracas das estações da linha no mês.",
+      "Quem faz baldeação vindo de outra linha não conta como nova entrada."
+    )
+  ),
+  transported = list(
+    label = "Passageiros transportados",
+    definition = paste(
+      "Passageiros que viajaram na linha no mês: quem entrou pelas catracas",
+      "mais quem chegou por baldeação de outra linha. Por isso o total",
+      "supera o de embarques."
+    )
+  ),
+  station = list(
+    label = "Embarques na estação",
+    definition = paste(
+      "A série mensal mostra a média de passageiros que entraram na estação",
+      "por dia útil. A série diária mostra as entradas de cada dia, com a",
+      "média móvel de 7 dias em destaque."
+    )
+  )
+)
+
+trend_note <- if (HAS_TRENDSERIES) {
+  "Tendência estimada por decomposição STL robusta (s.window = 13)."
+} else {
+  "Instale o pacote trendseries para habilitar tendência STL."
+}
+
+line_coverage <- bind_rows(
+  entrance = ent,
+  transported = trans,
+  .id = "metric"
+) |>
+  filter(!is.na(value)) |>
+  group_by(metric, line_number) |>
+  summarise(first = min(date), last = max(date), .groups = "drop")
+
+# Line 5 changed operator in Aug 2018: METRO SP reported it until then and the
+# Insper Dataverse carries it afterwards (only for entries and station data).
+# `first` is the first month of the series shown.
+line_source <- function(line, dataset, first) {
+  if (dataset == "transported" || !line %in% c("4", "5")) {
+    return("METRO SP")
+  }
+  if (
+    line == "4" ||
+      dataset == "station_daily" ||
+      first >= as.Date("2018-08-01")
+  ) {
+    return("Insper Dataverse")
+  }
+  return("METRO SP até jul/2018, Insper Dataverse depois")
+}
+
+fmt_span_pt <- function(first, last) {
+  return(paste(fmt_month_pt(first), "a", fmt_month_pt(last)))
+}
+
+info_row <- function(line, detail) {
+  return(div(
+    class = "info-row",
+    tags$span(
+      class = "map-dot",
+      style = paste0("background:", line_colors[[line]])
+    ),
+    div(
+      div(class = "info-row-title", line_labels[[line]]),
+      lapply(detail, function(x) div(class = "info-row-detail", x))
+    )
+  ))
+}
+
+info_box <- function(title, definition, rows, notes = NULL) {
+  return(div(
+    class = "info-box",
+    div(class = "info-box-eyebrow", bs_icon("info-circle"), "Sobre a seleção"),
+    div(class = "info-box-title", title),
+    tags$p(class = "info-box-text", definition),
+    div(class = "info-box-rows", rows),
+    if (length(notes)) {
+      tags$ul(class = "info-box-notes", lapply(notes, tags$li))
+    }
+  ))
+}
+
+lines_info_box <- function(lines, metric, start, show_trend) {
+  info <- metric_info[[metric]]
+  coverage <- line_coverage[line_coverage$metric == metric, ]
+
+  rows <- lapply(lines, function(ln) {
+    cov <- coverage[coverage$line_number == ln, ]
+    detail <- if (nrow(cov) == 0) {
+      "A fonte não publica esta variável para a linha"
+    } else {
+      c(
+        fmt_span_pt(cov$first, cov$last),
+        paste("Origem:", line_source(ln, metric, cov$first))
+      )
+    }
+    return(info_row(ln, detail))
+  })
+
+  notes <- c(
+    if (
+      metric == "entrance" &&
+        any(lines != "4") &&
+        start <= as.Date("2017-07-01")
+    ) {
+      "Jul/2017 sem dados de embarque: o METRO não publicou a tabela do mês."
+    },
+    if (
+      metric == "transported" &&
+        "5" %in% lines &&
+        start <= as.Date("2018-08-01")
+    ) {
+      "Linha 5: série termina em ago/2018, quando passou à ViaMobilidade."
+    },
+    if (show_trend) trend_note
+  )
+
+  return(info_box(info$label, info$definition, rows, notes))
+}
+
+station_info_box <- function(line, station, start, show_trend) {
+  monthly <- sta_avg[
+    sta_avg$line_number == line &
+      sta_avg$station_name == station &
+      !is.na(sta_avg$value),
+  ]
+  years <- sta_daily_years$year[
+    sta_daily_years$line_number == line &
+      sta_daily_years$station_name == station
+  ]
+
+  sources <- unique(c(
+    if (nrow(monthly) > 0) {
+      line_source(line, "station_averages", min(monthly$date))
+    },
+    if (length(years) > 0) line_source(line, "station_daily", NULL)
+  ))
+  detail <- c(
+    if (nrow(monthly) > 0) {
+      paste("Mensal:", fmt_span_pt(min(monthly$date), max(monthly$date)))
+    },
+    if (length(years) > 0) {
+      paste("Diária:", paste(range(years), collapse = " a "))
+    },
+    if (length(sources) == 1) {
+      paste("Origem:", sources)
+    } else if (length(sources) == 2) {
+      c(
+        paste("Origem mensal:", sources[1]),
+        paste("Origem diária:", sources[2])
+      )
+    }
+  )
+  if (is.null(detail)) {
+    detail <- "Sem dados para esta estação"
+  }
+
+  notes <- c(
+    if (
+      line == "1" &&
+        start <= as.Date("2016-06-01") &&
+        any(format(monthly$date, "%Y") == "2016")
+    ) {
+      paste(
+        "Fev a jun/2016: os valores da Linha 1 vêm subestimados e mal",
+        "distribuídos entre estações na publicação original do METRO."
+      )
+    },
+    if (show_trend) trend_note
+  )
+
+  return(info_box(
+    metric_info$station$label,
+    metric_info$station$definition,
+    info_row(line, detail),
+    notes
+  ))
+}
 
 ## Dataset metadata for download tab ----
 # Downloads serve the package datasets as-is, so the schema here matches the
