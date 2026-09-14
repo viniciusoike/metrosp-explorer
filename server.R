@@ -111,6 +111,18 @@ function(input, output, session) {
     )
   })
 
+  output$lines_info <- renderUI({
+    lns <- input$lines_line
+    req(length(lns) > 0, input$lines_metric)
+    show_trend <- isTRUE(input$lines_trend) && length(lns) == 1
+    lines_info_box(
+      lns,
+      input$lines_metric,
+      period_start(input$lines_period),
+      show_trend
+    )
+  })
+
   output$lines_title <- renderText({
     lns <- input$lines_line
     metric_lbl <- if (input$lines_metric == "entrance") {
@@ -410,6 +422,16 @@ function(input, output, session) {
     )
   })
 
+  output$sta_info <- renderUI({
+    req(input$sta_line, input$sta_station)
+    station_info_box(
+      input$sta_line,
+      input$sta_station,
+      period_start(input$sta_period),
+      isTRUE(input$sta_trend)
+    )
+  })
+
   output$sta_monthly_title <- renderText({
     paste0(input$sta_station, " — Média dias úteis (mensal)")
   })
@@ -471,7 +493,8 @@ function(input, output, session) {
         name = "Diário",
         symbol = "none",
         smooth = FALSE,
-        lineStyle = list(width = 1, color = "#C8CAD3")
+        lineStyle = list(width = 1, color = "#C9C3B8"),
+        itemStyle = list(color = "#C9C3B8")
       )
 
     if (nrow(df) >= 7L) {
@@ -482,6 +505,7 @@ function(input, output, session) {
           symbol = "none",
           smooth = FALSE,
           lineStyle = list(width = 2.4, color = col),
+          itemStyle = list(color = col),
           connectNulls = FALSE
         )
     }
@@ -522,7 +546,7 @@ function(input, output, session) {
       # transit convention: interchange hubs are white with a dark stroke
       hub <- df$n_lines > 1
       fill <- ifelse(hub, "#FFFFFF", unname(line_colors[df$first_line]))
-      stroke <- ifelse(hub, "#0E1130", "#FFFFFF")
+      stroke <- ifelse(hub, metro_ink, "#FFFFFF")
       stroke_opacity <- 1
       m <- m |> showGroup("lines_color") |> hideGroup("lines_neutral")
     } else {
@@ -540,7 +564,7 @@ function(input, output, session) {
         yoy = map_bin_color(df$pct_yoy, map_div_breaks$yoy, map_div_colors)
       )
       # soft ink ring keeps the light ramp steps visible on the pale tiles
-      stroke <- "#0E1130"
+      stroke <- metro_ink
       stroke_opacity <- 0.35
       m <- m |> showGroup("lines_neutral") |> hideGroup("lines_color")
     }
@@ -630,11 +654,11 @@ function(input, output, session) {
         popupOptions = popupOptions(maxWidth = 300),
         labelOptions = labelOptions(
           style = list(
-            "font-family" = "Inter, -apple-system, sans-serif",
+            "font-family" = "var(--bs-body-font-family)",
             "font-size" = "13px",
             "padding" = "8px 12px",
             "border-radius" = "6px",
-            "box-shadow" = "0 2px 8px rgba(14,17,48,0.12)"
+            "box-shadow" = "0 2px 8px rgba(13,27,42,0.12)"
           ),
           direction = "auto"
         )
@@ -651,8 +675,8 @@ function(input, output, session) {
 
   output$map <- renderLeaflet({
     m <- leaflet(options = leafletOptions(zoomControl = TRUE)) |>
-      addProviderTiles(providers$CartoDB.PositronNoLabels) |>
-      addProviderTiles(providers$CartoDB.PositronOnlyLabels)
+      add_carto_tiles("light_nolabels") |>
+      add_carto_tiles("light_only_labels")
 
     if (!is.null(sf_stations_map)) {
       bbox <- sf::st_bbox(sf_stations_map)

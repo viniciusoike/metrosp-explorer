@@ -16,6 +16,8 @@ function(request) {
     # flattens the HTML `title` into <title> verbatim
     window_title = "Metro SP — Explorador de Dados",
     theme = metro_theme,
+    # dark navbar: light links and a light toggler icon on small screens
+    navbar_options = navbar_options(theme = "dark"),
     lang = "pt-BR",
     # the three chart tabs fill the viewport so the charts scale with the
     # window; Download and Sobre stay as normal scrolling pages
@@ -65,7 +67,7 @@ function(request) {
               "Período",
               inline = TRUE,
               choices = PERIOD_CHOICES,
-              selected = "2019"
+              selected = "inicio"
             )
           ),
           if (HAS_TRENDSERIES) {
@@ -78,16 +80,7 @@ function(request) {
               )
             )
           },
-          hr(),
-          tags$p(
-            class = "text-muted small mb-0",
-            "Dados mensais. ",
-            if (HAS_TRENDSERIES) {
-              "Tendência estimada por decomposição STL robusta (s.window = 13)."
-            } else {
-              "Instale o pacote trendseries para habilitar tendência STL."
-            }
-          )
+          uiOutput("lines_info")
         ),
 
         uiOutput("lines_kpis"),
@@ -144,21 +137,13 @@ function(request) {
               "Período (série mensal)",
               inline = TRUE,
               choices = PERIOD_CHOICES,
-              selected = "2019"
+              selected = "inicio"
             )
           ),
           if (HAS_TRENDSERIES) {
             checkboxInput("sta_trend", "Mostrar tendência (STL)", value = FALSE)
           },
-          hr(),
-          tags$p(
-            class = "text-muted small mb-0",
-            if (HAS_TRENDSERIES) {
-              "Tendência STL disponível para dados mensais."
-            } else {
-              "Instale o pacote trendseries para habilitar tendência STL."
-            }
-          )
+          uiOutput("sta_info")
         ),
 
         uiOutput("sta_kpis"),
@@ -177,8 +162,8 @@ function(request) {
               textOutput("sta_monthly_title", inline = TRUE),
               downloadButton(
                 "dl_sta_csv",
-              tagList(
-                bs_icon("download"),
+                tagList(
+                  bs_icon("download"),
                   tags$span(class = "visually-hidden", "Baixar CSV")
                 ),
                 icon = NULL,
@@ -348,10 +333,9 @@ function(request) {
             ),
             tags$p(
               sprintf(
-                "Este explorador cobre de %s a %s e os gráficos começam em %s por padrão. ",
+                "Este explorador cobre de %s a %s. ",
                 fmt_month_pt(DATA_MIN),
-                fmt_month_pt(DATA_MAX),
-                fmt_month_pt(DEFAULT_START)
+                fmt_month_pt(DATA_MAX)
               ),
               "A aba Download traz as bases completas em vários formatos."
             ),

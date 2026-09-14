@@ -1,33 +1,42 @@
 /* Metro SP dashboard — custom polish */
 
 :root {
-  --metro-ink:       #0E1130;
-  --metro-ink-soft:  #4A4F6B;
-  /* 4.6:1 on --metro-bg, 4.9:1 on white: this drives most of the small
-     secondary text, so it has to clear WCAG AA on its own */
-  --metro-mute:      #6B7085;
-  --metro-line:      #E5E7EE;
-  --metro-bg:        #F7F8FB;
-  --metro-card:      #FFFFFF;
-  --metro-blue:      #171796;
+  /* EKIO brand chrome, from the ekioplot "ekio_brand" and "blue" palettes.
+     METRO SP line colors live in global.R and are not part of this set. */
+  --metro-ink: #0D1B2A;
+  --metro-ink-soft: #3C3935;
+  /* 4.9:1 on --metro-bg, 5.4:1 on --metro-card: this drives most of the
+     small secondary text, so it has to clear WCAG AA on its own */
+  --metro-mute: #6B665F;
+  --metro-line: #DCD6CA;
+  --metro-bg: #F2EDE2;
+  --metro-card: #FBFAF3;
+  --metro-blue: #225A7E;
+
+  /* navbar: deep navy from the blue ramp, text in the brand off-whites */
+  --metro-nav-bg: #1E3A5F;
+  --metro-nav-text: #D4DED9;
+  --metro-nav-active: #FBFAF3;
+  --metro-nav-accent: #84B8DD;
 
   /* channel triplets so the tints below derive from the colors above
      instead of repeating the literals */
-  --metro-blue-rgb:  23, 23, 150;
-  --metro-ink-rgb:   14, 17, 48;
+  --metro-blue-rgb: 34, 90, 126;
+  --metro-ink-rgb: 13, 27, 42;
 
-  --tint-faint:      rgba(var(--metro-blue-rgb), 0.05);
-  --tint-weak:       rgba(var(--metro-blue-rgb), 0.06);
-  --tint:            rgba(var(--metro-blue-rgb), 0.08);
-  --tint-focus:      rgba(var(--metro-blue-rgb), 0.12);
+  --tint-faint: rgba(var(--metro-blue-rgb), 0.05);
+  --tint-weak: rgba(var(--metro-blue-rgb), 0.06);
+  --tint: rgba(var(--metro-blue-rgb), 0.08);
+  --tint-focus: rgba(var(--metro-blue-rgb), 0.14);
 
   /* Sign of a change. Muted on purpose: these land on small KPI numbers, and
-     a saturated green/red would outweigh the value itself. */
-  --metro-pos:       #2F6F5E;
-  --metro-neg:       #9E4A45;
+     a saturated green/red would outweigh the value itself. Declines stay a
+     neutral warm gray. */
+  --metro-pos: #006261;
+  --metro-neg: #59544F;
 
-  --shadow-card:     0 1px 2px rgba(var(--metro-ink-rgb), 0.04),
-                     0 4px 12px rgba(var(--metro-ink-rgb), 0.05);
+  --shadow-card: 0 1px 2px rgba(var(--metro-ink-rgb), 0.04),
+    0 4px 12px rgba(var(--metro-ink-rgb), 0.05);
 }
 
 /* ── Typography ─────────────────────────────────────────────────────────── */
@@ -35,11 +44,16 @@
 body {
   background: var(--metro-bg);
   color: var(--metro-ink);
-  font-feature-settings: "ss01", "cv11", "tnum";
+  font-feature-settings: "tnum", "lnum";
   letter-spacing: -0.005em;
 }
 
-h1, h2, h3, h4, h5, .card-header {
+h1,
+h2,
+h3,
+h4,
+h5,
+.card-header {
   letter-spacing: -0.018em;
   color: var(--metro-ink);
 }
@@ -54,6 +68,7 @@ h1, h2, h3, h4, h5, .card-header {
 }
 
 .navbar-title {
+  color: inherit;
   margin: 0;
   font-size: inherit;
   font-weight: inherit;
@@ -101,35 +116,44 @@ h3.card-header {
   margin: 6px 0 0;
 }
 
-.card-body > .card-subhead:first-child {
+.card-body>.card-subhead:first-child {
   margin-top: 0;
 }
 
 /* ── Compact KPI cards ──────────────────────────────────────────────────── */
 
+/* one strip instead of separate cards: the 1px gap lets the line color show
+   through between cells, so the dividers follow the grid when it wraps */
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 1px;
+  background: var(--metro-line);
+  border: 1px solid var(--metro-line);
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
 }
 
-.kpi-grid.kpi-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.kpi-grid.kpi-grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
 
 @media (max-width: 1200px) {
+
   .kpi-grid,
-  .kpi-grid.kpi-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi-grid.kpi-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .kpi {
   background: var(--metro-card);
-  border-left: 3px solid var(--metro-blue);
-  border-radius: 10px;
-  padding: 10px 12px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-height: 78px;
-  box-shadow: var(--shadow-card);
   transition: background-color 0.12s ease;
 }
 
@@ -139,10 +163,8 @@ h3.card-header {
 
 /* labels and captions wrap; grid rows stretch, so the cards stay level */
 .kpi-label {
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 0.8rem;
+  font-weight: 500;
   color: var(--metro-mute);
   line-height: 1.3;
 }
@@ -151,7 +173,7 @@ h3.card-header {
   font-size: 1.18rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: var(--metro-blue);
+  color: var(--metro-ink);
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
   white-space: nowrap;
@@ -165,23 +187,30 @@ h3.card-header {
   line-height: 1.35;
 }
 
-.kpi--pos { border-left-color: var(--metro-pos); }
-.kpi--pos .kpi-value { color: var(--metro-pos); }
+.kpi--pos .kpi-value {
+  color: var(--metro-pos);
+}
 
-.kpi--neg { border-left-color: var(--metro-neg); }
-.kpi--neg .kpi-value { color: var(--metro-neg); }
+.kpi--neg .kpi-value {
+  color: var(--metro-neg);
+}
 
 /* ── Navbar ─────────────────────────────────────────────────────────────── */
 
 .navbar {
-  background: var(--metro-card) !important;
-  border-bottom: 1px solid var(--metro-line);
-  box-shadow: 0 1px 0 rgba(var(--metro-ink-rgb), 0.02);
+  background: var(--metro-nav-bg) !important;
+  border-bottom: none;
+  box-shadow: 0 1px 0 rgba(var(--metro-ink-rgb), 0.08);
   padding: 10px 20px;
 }
 
+.navbar .navbar-brand,
+.navbar .navbar-brand:hover {
+  color: var(--metro-nav-active);
+}
+
 .navbar .navbar-nav .nav-link {
-  color: var(--metro-ink-soft);
+  color: var(--metro-nav-text);
   font-weight: 500;
   font-size: 0.92rem;
   padding: 8px 14px;
@@ -207,20 +236,17 @@ h3.card-header {
 .navbar .navbar-nav .nav-link:hover,
 .navbar .navbar-nav .nav-link:focus-visible,
 .navbar .navbar-nav .nav-link.active {
-  text-decoration-color: var(--metro-blue);
+  text-decoration-color: var(--metro-nav-accent);
 }
 
-.navbar .navbar-nav .nav-link:hover {
-  color: var(--metro-blue);
-}
-
+.navbar .navbar-nav .nav-link:hover,
 .navbar .navbar-nav .nav-link.active {
-  color: var(--metro-blue) !important;
+  color: var(--metro-nav-active) !important;
 }
 
 /* ── Sidebar ────────────────────────────────────────────────────────────── */
 
-.bslib-sidebar-layout > .sidebar {
+.bslib-sidebar-layout>.sidebar {
   background: var(--metro-card) !important;
   border-right: 1px solid var(--metro-line);
 }
@@ -236,7 +262,8 @@ h3.card-header {
 
 /* ── Form controls ──────────────────────────────────────────────────────── */
 
-.form-control, .form-select {
+.form-control,
+.form-select {
   border: 1px solid var(--metro-line);
   border-radius: 8px;
   font-size: 0.9rem;
@@ -244,12 +271,14 @@ h3.card-header {
   color: var(--metro-ink);
 }
 
-.form-control:focus, .form-select:focus {
+.form-control:focus,
+.form-select:focus {
   border-color: var(--metro-blue);
   box-shadow: 0 0 0 3px var(--tint-focus);
 }
 
-label, .control-label {
+label,
+.control-label {
   font-weight: 500;
   font-size: 0.82rem;
   color: var(--metro-ink-soft);
@@ -269,7 +298,9 @@ label, .control-label {
   gap: 6px;
 }
 
-.pill-group label.radio-inline {
+/* Bootstrap indents inline radios with .shiny-input-container-inline
+   .shiny-options-group .radio-inline; match that specificity to drop it */
+.pill-group .shiny-options-group label.radio-inline {
   position: relative;
   margin: 0;
   padding: 0;
@@ -280,6 +311,22 @@ label, .control-label {
   position: absolute;
   opacity: 0;
   pointer-events: none;
+}
+
+/* the sidebar is too narrow for three pills in a row: the first option takes
+   the full width and the other two share the row below */
+.sidebar .pill-group .shiny-options-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.sidebar .pill-group label.radio-inline:first-child {
+  grid-column: 1 / -1;
+}
+
+.sidebar .pill-group .radio-inline span {
+  display: block;
+  text-align: center;
 }
 
 .pill-group .radio-inline span {
@@ -300,15 +347,90 @@ label, .control-label {
   color: var(--metro-blue);
 }
 
-.pill-group .radio-inline input:checked + span {
+.pill-group .radio-inline input:checked+span {
   background: var(--tint);
   border-color: var(--metro-blue);
   color: var(--metro-blue);
   font-weight: 600;
 }
 
-.pill-group .radio-inline input:focus-visible + span {
+.pill-group .radio-inline input:focus-visible+span {
   box-shadow: 0 0 0 3px var(--tint-focus);
+}
+
+/* ── Sidebar selection info box ─────────────────────────────────────────── */
+
+.info-box {
+  margin-top: 4px;
+  padding: 12px 14px;
+  background: var(--metro-bg);
+  border: 1px solid var(--metro-line);
+  border-radius: 10px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--metro-ink-soft);
+}
+
+.info-box-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--metro-mute);
+  margin-bottom: 6px;
+}
+
+.info-box-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--metro-ink);
+  margin-bottom: 4px;
+}
+
+.info-box-text {
+  margin: 0 0 10px;
+}
+
+.info-box-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--metro-line);
+}
+
+.info-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.info-row .map-dot {
+  position: relative;
+  top: 1px;
+}
+
+.info-row-title {
+  font-weight: 600;
+  color: var(--metro-ink);
+}
+
+.info-row-detail {
+  color: var(--metro-mute);
+  font-size: 0.75rem;
+}
+
+.info-box-notes {
+  margin: 10px 0 0;
+  padding: 10px 0 0 16px;
+  border-top: 1px solid var(--metro-line);
+  font-size: 0.75rem;
+  color: var(--metro-mute);
+}
+
+.info-box-notes li + li {
+  margin-top: 4px;
 }
 
 /* ── Controls docked in a card header ───────────────────────────────────── */
@@ -378,7 +500,7 @@ label, .control-label {
 /* ── Footer / source ────────────────────────────────────────────────────── */
 
 .source-tag {
-  color: var(--metro-mute);
+  color: var(--metro-nav-text);
   font-size: 0.78rem;
   margin-right: 8px;
 }
@@ -390,7 +512,7 @@ label, .control-label {
 }
 
 .source-tag a:hover {
-  color: var(--metro-blue);
+  color: var(--metro-nav-active);
 }
 
 /* ── echarts4r container ───────────────────────────────────────────────── */
@@ -446,7 +568,7 @@ label, .control-label {
 
 .leaflet-popup-content {
   margin: 14px 16px;
-  font-family: Inter, -apple-system, sans-serif;
+  font-family: var(--bs-body-font-family);
   font-size: 0.85rem;
   color: var(--metro-ink);
   line-height: 1.45;
@@ -542,11 +664,11 @@ label, .control-label {
 }
 
 .leaflet .info.legend {
-  font-family: Inter, -apple-system, sans-serif;
+  font-family: var(--bs-body-font-family);
   font-size: 12px;
   line-height: 1.5;
   color: var(--metro-ink-soft);
-  background: rgba(255, 255, 255, 0.94);
+  background: rgba(251, 250, 243, 0.95);
   border-radius: 10px;
   box-shadow: var(--shadow-card);
   border: 1px solid var(--metro-line);
