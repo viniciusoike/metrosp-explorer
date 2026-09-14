@@ -44,7 +44,7 @@
 body {
   background: var(--metro-bg);
   color: var(--metro-ink);
-  font-feature-settings: "ss01", "cv11", "tnum";
+  font-feature-settings: "tnum", "lnum";
   letter-spacing: -0.005em;
 }
 

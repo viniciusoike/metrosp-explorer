@@ -261,12 +261,14 @@ e_metro_defaults <- function(e, legend = TRUE) {
         areaStyle = list(color = "rgba(34, 90, 126, 0.15)")
       )
     ) |>
-    e_toolbox_feature(feature = "saveAsImage", title = "Salvar")
+    e_toolbox_feature(feature = "saveAsImage", title = "Salvar") |>
+    # echarts draws on canvas and does not inherit the page font
+    e_text_style(fontFamily = paste0("'", APP_FONT, "', sans-serif"))
 }
 
 # bslib theme ----
 
-APP_FONT <- "Inter"
+APP_FONT <- "Host Grotesk"
 
 metro_theme <- bs_theme(
   version = 5,
