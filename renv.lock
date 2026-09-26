@@ -2189,7 +2189,7 @@
     },
     "metrosp": {
       "Package": "metrosp",
-      "Version": "1.2.1",
+      "Version": "1.3.0",
       "Source": "Repository",
       "Type": "Package",
       "Title": "São Paulo Metro Passenger Demand Data",
@@ -2216,7 +2216,6 @@
         "dplyr (>= 1.2.0)",
         "ggplot2",
         "knitr",
-        "piggyback",
         "quarto",
         "rmarkdown",
         "sf",
@@ -2235,7 +2234,7 @@
       "Repository": "https://viniciusoike.r-universe.dev",
       "RemoteUrl": "https://github.com/viniciusoike/metrosp",
       "RemoteRef": "HEAD",
-      "RemoteSha": "bde52afefe92af1f7de36073e4c2238416d50dfe",
+      "RemoteSha": "0de4448174fa225b5f5cb0562ba57f0f806c885a",
       "NeedsCompilation": "no",
       "Author": "Vinicius Oike [aut, cre, cph] (ORCID: <https://orcid.org/0009-0005-8015-9189>)",
       "Maintainer": "Vinicius Oike <viniciusoike@gmail.com>"
