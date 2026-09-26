@@ -369,10 +369,53 @@ if (!HAS_TRENDSERIES) {
   )
 }
 
+# Load demand data ----
+# global.R runs once per R process, so every session a process serves shares
+# one download. Setting metrosp.cache skips the interactive consent prompt;
+# the cache lives in tempdir() unless METROSP_CACHE_DIR points elsewhere.
+options(
+  metrosp.cache = TRUE,
+  metrosp.cache_dir = Sys.getenv(
+    "METROSP_CACHE_DIR",
+    file.path(tempdir(), "metrosp-cache")
+  )
+)
+
+# Reads the published release, falling back to the snapshot bundled with the
+# package when the download fails, so the app always starts
+read_demand <- function(dataset) {
+  dat <- tryCatch(
+    metrosp::read_metro_demand(dataset, source = "remote", quiet = TRUE),
+    error = function(e) {
+      cli::cli_warn(c(
+        "Could not download {.val {dataset}}; using the bundled snapshot.",
+        x = conditionMessage(e)
+      ))
+      return(NULL)
+    }
+  )
+  if (is.null(dat)) {
+    dat <- metrosp::read_metro_demand(dataset, source = "bundled")
+  }
+  return(dat)
+}
+
+demand_datasets <- c(
+  "passengers_entrance",
+  "passengers_transported",
+  "station_averages",
+  "station_daily"
+)
+demand <- lapply(setNames(nm = demand_datasets), read_demand)
+
+cli::cli_inform(
+  "Demand data loaded through {max(demand$station_daily$date)}."
+)
+
 # Pre-build data ----
 
 ## Line-level monthly (entrance) ----
-ent <- metrosp::passengers_entrance |>
+ent <- demand$passengers_entrance |>
   filter(
     metric_abb == "total",
     line_number %in% as.integer(LINES)
@@ -383,7 +426,7 @@ ent <- metrosp::passengers_entrance |>
 ## Line-level monthly (transported) ----
 # the package publishes transported counts in thousands; the app counts
 # individual passengers everywhere, as passengers_entrance does
-trans <- metrosp::passengers_transported |>
+trans <- demand$passengers_transported |>
   filter(
     metric_abb == "total",
     line_number %in% as.integer(LINES)
@@ -392,13 +435,13 @@ trans <- metrosp::passengers_transported |>
   select(date, line_number, value, year)
 
 ## Station averages (monthly weekday avg) ----
-sta_avg <- metrosp::station_averages |>
+sta_avg <- demand$station_averages |>
   mutate(line_number = as.character(line_number)) |>
   filter(line_number %in% LINES) |>
   select(date, line_number, station_name, value = avg_passenger, year)
 
 ## Station daily ----
-sta_daily <- metrosp::station_daily |>
+sta_daily <- demand$station_daily |>
   mutate(line_number = as.character(line_number)) |>
   filter(line_number %in% LINES) |>
   select(date, line_number, station_name, value = passengers, year)
@@ -994,12 +1037,12 @@ dataset_info <- list(
       "Passageiros entrando nas estações, agregados por linha.",
       "Inclui todas as métricas (coluna metric_abb), não apenas o total."
     ),
-    cols = names(metrosp::passengers_entrance),
-    rows = nrow(metrosp::passengers_entrance),
+    cols = names(demand$passengers_entrance),
+    rows = nrow(demand$passengers_entrance),
     range = paste(
-      min(metrosp::passengers_entrance$date),
+      min(demand$passengers_entrance$date),
       "a",
-      max(metrosp::passengers_entrance$date)
+      max(demand$passengers_entrance$date)
     ),
     source = "METRO SP / Insper Dataverse"
   ),
@@ -1009,36 +1052,36 @@ dataset_info <- list(
       "Passageiros transportados em cada linha, por mês.",
       "Inclui todas as métricas (coluna metric_abb)."
     ),
-    cols = names(metrosp::passengers_transported),
-    rows = nrow(metrosp::passengers_transported),
+    cols = names(demand$passengers_transported),
+    rows = nrow(demand$passengers_transported),
     range = paste(
-      min(metrosp::passengers_transported$date),
+      min(demand$passengers_transported$date),
       "a",
-      max(metrosp::passengers_transported$date)
+      max(demand$passengers_transported$date)
     ),
     source = "METRO SP"
   ),
   station_averages = list(
     label = "Média de embarques por estação (mensal)",
     desc = "Média de embarques em dias úteis por estação, mensal.",
-    cols = names(metrosp::station_averages),
-    rows = nrow(metrosp::station_averages),
+    cols = names(demand$station_averages),
+    rows = nrow(demand$station_averages),
     range = paste(
-      min(metrosp::station_averages$date),
+      min(demand$station_averages$date),
       "a",
-      max(metrosp::station_averages$date)
+      max(demand$station_averages$date)
     ),
     source = "METRO SP / Insper Dataverse"
   ),
   station_daily = list(
     label = "Embarques diários por estação",
     desc = "Embarques diários em cada estação do metrô.",
-    cols = names(metrosp::station_daily),
-    rows = nrow(metrosp::station_daily),
+    cols = names(demand$station_daily),
+    rows = nrow(demand$station_daily),
     range = paste(
-      min(metrosp::station_daily$date),
+      min(demand$station_daily$date),
       "a",
-      max(metrosp::station_daily$date)
+      max(demand$station_daily$date)
     ),
     source = "METRO SP / Insper Dataverse"
   ),

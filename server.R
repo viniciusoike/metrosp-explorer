@@ -820,35 +820,35 @@ function(input, output, session) {
   }
 
   output$dl_ent_csv <- make_csv_handler(
-    metrosp::passengers_entrance,
+    demand$passengers_entrance,
     "passengers-entrance"
   )
   output$dl_ent_xlsx <- make_xlsx_handler(
-    metrosp::passengers_entrance,
+    demand$passengers_entrance,
     "passengers-entrance"
   )
   output$dl_trans_csv <- make_csv_handler(
-    metrosp::passengers_transported,
+    demand$passengers_transported,
     "passengers-transported"
   )
   output$dl_trans_xlsx <- make_xlsx_handler(
-    metrosp::passengers_transported,
+    demand$passengers_transported,
     "passengers-transported"
   )
   output$dl_staavg_csv <- make_csv_handler(
-    metrosp::station_averages,
+    demand$station_averages,
     "station-averages"
   )
   output$dl_staavg_xlsx <- make_xlsx_handler(
-    metrosp::station_averages,
+    demand$station_averages,
     "station-averages"
   )
   output$dl_stadaily_csv <- make_csv_handler(
-    metrosp::station_daily,
+    demand$station_daily,
     "station-daily"
   )
   output$dl_stadaily_xlsx <- make_xlsx_handler(
-    metrosp::station_daily,
+    demand$station_daily,
     "station-daily"
   )
 
