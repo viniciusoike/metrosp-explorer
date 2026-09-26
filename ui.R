@@ -7,26 +7,129 @@ function(request) {
     id = "main_nav",
     # the brand is the page title, so it carries the h1 the card-header h2s
     # need above them; .navbar-title resets the browser heading scale
+    # the brand is the page title and doubles as the home link: the h1
+    # keeps the heading scale and fires brand_home (click + Enter) instead
+    # of nesting an <a> inside bslib's own .navbar-brand anchor
     title = tags$h1(
-      class = "navbar-title",
+      class = "navbar-title navbar-brand-home",
+      role = "link",
+      tabindex = "0",
+      title = "Ir para o Início",
+      onclick = "Shiny.setInputValue('brand_home', Date.now(), {priority: 'event'})",
+      onkeydown = "if (event.key === 'Enter') Shiny.setInputValue('brand_home', Date.now(), {priority: 'event'})",
       bs_icon("train-front-fill", size = "1.05em", class = "me-2"),
-      "Metro SP — Explorador de Dados"
+      "Metrô em Dados"
     ),
     # without this the browser tab shows the icon's raw SVG markup: bslib
     # flattens the HTML `title` into <title> verbatim
-    window_title = "Metro SP — Explorador de Dados",
+    window_title = "Metrô em Dados",
     theme = metro_theme,
     # dark navbar: light links and a light toggler icon on small screens
     navbar_options = navbar_options(theme = "dark"),
     lang = "pt-BR",
     # the three chart tabs fill the viewport so the charts scale with the
-    # window; Download and Sobre stay as normal scrolling pages
+    # window; Início, Download and Sobre stay as normal scrolling pages
     fillable = c("linhas", "estacoes", "mapa"),
     header = tags$head(
       tags$link(rel = "stylesheet", href = "styles.css"),
       tags$meta(
         name = "viewport",
         content = "width=device-width, initial-scale=1"
+      )
+    ),
+
+    ## Tab: Início ----
+    nav_panel(
+      title = "Início",
+      value = "inicio",
+      icon = bs_icon("house"),
+
+      div(
+        class = "home-hero",
+        tags$h2(
+          class = "home-title",
+          "Explore a demanda do Metrô de São Paulo"
+        ),
+        tags$p(
+          class = "home-lede",
+          sprintf(
+            paste0(
+              "Séries mensais por linha, médias por estação e o mapa da rede, ",
+              "de %s a %s."
+            ),
+            fmt_month_pt(DATA_MIN),
+            fmt_month_pt(DATA_MAX)
+          )
+        ),
+        tags$p(
+          class = "home-cover",
+          "Dados do pacote ",
+          tags$a(
+            href = "https://viniciusoike.github.io/metrosp/",
+            target = "_blank",
+            "{metrosp}"
+          ),
+          " · escolha um ponto de partida abaixo"
+        )
+      ),
+
+      layout_column_wrap(
+        width = 1 / 2,
+        card(
+          card_header("Linhas", container = tags$h3),
+          card_body(
+            tags$p(
+              class = "small text-muted",
+              "Embarques e transportados por linha, com KPIs e tendência."
+            ),
+            actionLink(
+              "go_linhas",
+              tagList("Explorar linhas", bs_icon("arrow-right", class = "ms-1"))
+            )
+          )
+        ),
+        card(
+          card_header("Estações", container = tags$h3),
+          card_body(
+            tags$p(
+              class = "small text-muted",
+              "Média em dias úteis e série diária por estação."
+            ),
+            actionLink(
+              "go_estacoes",
+              tagList(
+                "Explorar estações",
+                bs_icon("arrow-right", class = "ms-1")
+              )
+            )
+          )
+        ),
+        card(
+          card_header("Mapa", container = tags$h3),
+          card_body(
+            tags$p(
+              class = "small text-muted",
+              "Demanda e variações na rede — clique numa estação para a série."
+            ),
+            actionLink(
+              "go_mapa",
+              tagList("Abrir o mapa", bs_icon("arrow-right", class = "ms-1"))
+            )
+          )
+        ),
+        card(
+          card_header("Download", container = tags$h3),
+          card_body(
+            tags$p(
+              class = "small text-muted",
+              "Bases completas em CSV, Excel e formatos espaciais."
+            ),
+            actionLink(
+              "go_download",
+              tagList("Baixar dados", bs_icon("arrow-right", class = "ms-1"))
+            )
+          )
+        )
       )
     ),
 
@@ -427,6 +530,16 @@ function(request) {
           target = "_blank",
           "{metrosp}"
         )
+      )
+    ),
+    # EKIO credit badge: swap the src to "ekio-badge.svg" for the
+    # badge-mark version (both live in www/)
+    nav_item(
+      tags$img(
+        src = "ekio-badge-wordmark.svg",
+        alt = "Desenvolvido por EKIO",
+        title = "Desenvolvido por EKIO",
+        class = "navbar-logo"
       )
     )
   )

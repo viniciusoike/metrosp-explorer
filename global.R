@@ -194,48 +194,80 @@ js_axis_label_compact <- htmlwidgets::JS(
   "}"
 )
 
-js_tooltip_pt_br <- htmlwidgets::JS(
-  "function(params) {",
-  "  if (!Array.isArray(params)) params = [params];",
-  paste0(
-    "  var t = '<div style=\"font-weight:600;margin-bottom:4px;color:",
-    metro_ink,
-    "\">' + params[0].axisValueLabel + '</div>';"
-  ),
-  "  params.forEach(function(p) {",
-  "    var v = (typeof p.value === 'object' ? p.value[1] : p.value);",
-  "    var label = v != null ? v.toLocaleString('pt-BR', {maximumFractionDigits: 1}) : '—';",
-  "    t += '<div style=\"display:flex;align-items:center;gap:6px;\">';",
-  "    t += '<span style=\"display:inline-block;width:8px;height:8px;border-radius:50%;background:' + p.color + '\"></span>';",
-  paste0(
-    "    t += '<span style=\"color:",
-    metro_ink_soft,
-    "\">' + p.seriesName + '</span>';"
-  ),
-  paste0(
-    "    t += '<span style=\"margin-left:auto;font-weight:600;color:",
-    metro_ink,
-    "\">' + label + '</span>';"
-  ),
-  "    t += '</div>';",
-  "  });",
-  "  return t;",
-  "}"
-)
+# Tooltip header is "dez/2020" for monthly charts and "05/12/2020" for daily
+# ones. Values mirror fmt_n(); echarts4r ships each point as a [date, value]
+# pair, so the value arrives as a string and needs Number() first.
+js_tooltip_pt_br <- function(date_format = c("month", "day")) {
+  date_format <- match.arg(date_format)
+  months_js <- paste0("['", paste(MONTHS_PT, collapse = "','"), "']")
+  header_js <- switch(
+    date_format,
+    month = paste0(months_js, "[d.getMonth()] + '/' + d.getFullYear()"),
+    day = paste0(
+      "String(d.getDate()).padStart(2, '0') + '/' + ",
+      "String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear()"
+    )
+  )
+
+  htmlwidgets::JS(
+    "function(params) {",
+    "  if (!Array.isArray(params)) params = [params];",
+    "  var dec = function(x, n) {",
+    "    return x.toLocaleString('pt-BR', {minimumFractionDigits: n, maximumFractionDigits: n});",
+    "  };",
+    "  var fmtN = function(v) {",
+    "    if (v == null || v === '' || isNaN(Number(v))) return '—';",
+    "    v = Number(v);",
+    "    if (v >= 1e9) return dec(v / 1e9, 2) + ' bi';",
+    "    if (v >= 1e6) return dec(v / 1e6, 1) + ' mi';",
+    "    if (v >= 1e3) return dec(v / 1e3, 1) + ' mil';",
+    "    return dec(Math.round(v), 0);",
+    "  };",
+    "  var d = new Date(params[0].axisValue);",
+    paste0(
+      "  var header = isNaN(d) ? params[0].axisValueLabel : ",
+      header_js,
+      ";"
+    ),
+    paste0(
+      "  var t = '<div style=\"font-weight:600;margin-bottom:4px;color:",
+      metro_ink,
+      "\">' + header + '</div>';"
+    ),
+    "  params.forEach(function(p) {",
+    "    var v = Array.isArray(p.value) ? p.value[1] : p.value;",
+    "    t += '<div style=\"display:flex;align-items:center;gap:6px;\">';",
+    "    t += '<span style=\"display:inline-block;width:8px;height:8px;border-radius:50%;background:' + p.color + '\"></span>';",
+    paste0(
+      "    t += '<span style=\"color:",
+      metro_ink_soft,
+      "\">' + p.seriesName + '</span>';"
+    ),
+    paste0(
+      "    t += '<span style=\"margin-left:auto;font-weight:600;color:",
+      metro_ink,
+      "\">' + fmtN(v) + '</span>';"
+    ),
+    "    t += '</div>';",
+    "  });",
+    "  return t;",
+    "}"
+  )
+}
 
 # echarts4r shared defaults ----
 
 # The legend sits at the top: the datazoom slider owns the bottom strip
 # (bottom 8 + height 20), and a bottom legend lands on top of it. Charts with
 # a single series pass legend = FALSE, since the card header already names it.
-e_metro_defaults <- function(e, legend = TRUE) {
+e_metro_defaults <- function(e, legend = TRUE, date_format = "month") {
   e |>
     e_x_axis(type = "time") |>
     e_y_axis(
       axisLabel = list(formatter = js_axis_label_compact),
       splitLine = list(lineStyle = list(color = metro_grid))
     ) |>
-    e_tooltip(trigger = "axis", formatter = js_tooltip_pt_br) |>
+    e_tooltip(trigger = "axis", formatter = js_tooltip_pt_br(date_format)) |>
     e_legend(show = legend, top = 0, itemWidth = 14, itemHeight = 8) |>
     e_grid(
       left = 60,

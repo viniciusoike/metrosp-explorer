@@ -2,15 +2,16 @@
 
 :root {
   /* EKIO brand chrome, from the ekioplot "ekio_brand" and "blue" palettes.
-     METRO SP line colors live in global.R and are not part of this set. */
+     METRO SP line colors live in global.R and are not part of this set.
+     Stripped variant: white page/cards, sharp 6px radius, no shadows. */
   --metro-ink: #0D1B2A;
   --metro-ink-soft: #3C3935;
   /* 4.9:1 on --metro-bg, 5.4:1 on --metro-card: this drives most of the
      small secondary text, so it has to clear WCAG AA on its own */
   --metro-mute: #6B665F;
-  --metro-line: #DCD6CA;
-  --metro-bg: #F2EDE2;
-  --metro-card: #FBFAF3;
+  --metro-line: #E2DDD4;
+  --metro-bg: #FFFFFF;
+  --metro-card: #FFFFFF;
   --metro-blue: #225A7E;
 
   /* navbar: deep navy from the blue ramp, text in the brand off-whites */
@@ -35,8 +36,7 @@
   --metro-pos: #006261;
   --metro-neg: #59544F;
 
-  --shadow-card: 0 1px 2px rgba(var(--metro-ink-rgb), 0.04),
-    0 4px 12px rgba(var(--metro-ink-rgb), 0.05);
+  --shadow-card: none;
 }
 
 /* ── Typography ─────────────────────────────────────────────────────────── */
@@ -44,8 +44,7 @@
 body {
   background: var(--metro-bg);
   color: var(--metro-ink);
-  font-feature-settings: "tnum", "lnum";
-  letter-spacing: -0.005em;
+  letter-spacing: 0;
 }
 
 h1,
@@ -54,7 +53,7 @@ h3,
 h4,
 h5,
 .card-header {
-  letter-spacing: -0.018em;
+  letter-spacing: -0.01em;
   color: var(--metro-ink);
 }
 
@@ -63,8 +62,8 @@ h5,
 .navbar-brand {
   display: flex;
   align-items: center;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-weight: 650;
+  letter-spacing: 0;
 }
 
 .navbar-title {
@@ -76,12 +75,61 @@ h5,
   line-height: inherit;
 }
 
+/* the brand doubles as the home link: pointer + visible keyboard focus */
+.navbar-brand-home {
+  cursor: pointer;
+}
+
+.navbar-brand-home:focus-visible {
+  outline: 2px solid var(--metro-nav-accent);
+  outline-offset: 2px;
+}
+
+body.nav-light .navbar-brand-home:focus-visible {
+  outline-color: var(--metro-blue);
+}
+
+/* ── Home landing ───────────────────────────────────────────────────────── */
+
+.home-hero {
+  max-width: 760px;
+  margin: 8px 2px 12px;
+}
+
+.home-title {
+  font-size: 1.35rem;
+  font-weight: 650;
+  margin: 0 0 6px;
+}
+
+.home-lede {
+  font-size: 1rem;
+  color: var(--metro-ink-soft);
+  margin: 0 0 4px;
+}
+
+.home-cover {
+  font-size: 0.85rem;
+  color: var(--metro-mute);
+  margin: 0;
+}
+
+.home-cover a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.home-cover a:hover {
+  color: var(--metro-ink);
+}
+
 /* ── Cards ──────────────────────────────────────────────────────────────── */
 
 .card {
   border: 1px solid var(--metro-line) !important;
-  border-radius: 14px !important;
-  box-shadow: var(--shadow-card);
+  border-radius: 6px !important;
+  box-shadow: none;
   background: var(--metro-card);
   overflow: hidden;
 }
@@ -91,7 +139,7 @@ h5,
   border-bottom: 1px solid var(--metro-line) !important;
   font-weight: 600;
   font-size: 0.95rem;
-  padding: 14px 18px;
+  padding: 12px 16px;
   color: var(--metro-ink);
 }
 
@@ -105,7 +153,7 @@ h3.card-header {
 }
 
 .card-body {
-  padding: 16px 18px;
+  padding: 14px 16px;
 }
 
 /* card_body is a flex column with its own gap, so the heading only needs a
@@ -130,8 +178,8 @@ h3.card-header {
   gap: 1px;
   background: var(--metro-line);
   border: 1px solid var(--metro-line);
-  border-radius: 14px;
-  box-shadow: var(--shadow-card);
+  border-radius: 6px;
+  box-shadow: none;
   overflow: hidden;
 }
 
@@ -149,16 +197,11 @@ h3.card-header {
 
 .kpi {
   background: var(--metro-card);
-  padding: 12px 16px;
+  padding: 10px 14px;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-height: 78px;
-  transition: background-color 0.12s ease;
-}
-
-.kpi:hover {
-  background-color: var(--tint-faint);
+  min-height: 72px;
 }
 
 /* labels and captions wrap; grid rows stretch, so the cards stay level */
@@ -172,7 +215,7 @@ h3.card-header {
 .kpi-value {
   font-size: 1.18rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   color: var(--metro-ink);
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
@@ -200,8 +243,8 @@ h3.card-header {
 .navbar {
   background: var(--metro-nav-bg) !important;
   border-bottom: none;
-  box-shadow: 0 1px 0 rgba(var(--metro-ink-rgb), 0.08);
-  padding: 10px 20px;
+  box-shadow: none;
+  padding: 8px 16px;
 }
 
 .navbar .navbar-brand,
@@ -213,19 +256,15 @@ h3.card-header {
   color: var(--metro-nav-text);
   font-weight: 500;
   font-size: 0.92rem;
-  padding: 8px 14px;
+  padding: 8px 12px;
   margin: 0 2px;
-  text-decoration-line: underline;
-  text-decoration-color: transparent;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 7px;
-  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+  text-decoration: none;
+  transition: color 0.1s ease;
 }
 
 /* bslib's navbar is a .nav-underline, so every link carries a 2px
-   border-bottom. A one-sided border under a border-radius renders as a wedge
-   that curls past the corners; the underline here is text-decoration instead,
-   so keep Bootstrap's border hidden in every state. */
+   border-bottom. Keep Bootstrap's border hidden and use plain color:
+   inactive dim, hover/active white. No underline animation. */
 .navbar .navbar-nav .nav-link,
 .navbar .navbar-nav .nav-link:hover,
 .navbar .navbar-nav .nav-link:focus,
@@ -234,14 +273,59 @@ h3.card-header {
 }
 
 .navbar .navbar-nav .nav-link:hover,
-.navbar .navbar-nav .nav-link:focus-visible,
-.navbar .navbar-nav .nav-link.active {
-  text-decoration-color: var(--metro-nav-accent);
+.navbar .navbar-nav .nav-link:focus-visible {
+  color: var(--metro-nav-active);
 }
 
-.navbar .navbar-nav .nav-link:hover,
 .navbar .navbar-nav .nav-link.active {
   color: var(--metro-nav-active) !important;
+  font-weight: 650;
+}
+
+/* ── Navbar experiments (toggle one body class in devtools) ───────────
+   Preview with: document.body.classList.add('nav-darker') — or 'nav-light'.
+   Remove the class (or reload) to go back to the default navy. For a real
+   mobile check of 'nav-light', also flip navbar_options(theme) to "light"
+   in ui.R so the hamburger icon inherits the right color. */
+
+body.nav-darker .navbar {
+  background: #0F2238 !important;
+}
+
+body.nav-light .navbar {
+  background: #F7F6F2 !important;
+  border-bottom: 1px solid var(--metro-line);
+}
+
+body.nav-light .navbar .navbar-brand,
+body.nav-light .navbar .navbar-brand:hover {
+  color: var(--metro-ink);
+}
+
+body.nav-light .navbar .navbar-nav .nav-link {
+  color: var(--metro-ink-soft);
+}
+
+body.nav-light .navbar .navbar-nav .nav-link:hover,
+body.nav-light .navbar .navbar-nav .nav-link:focus-visible,
+body.nav-light .navbar .navbar-nav .nav-link.active {
+  color: var(--metro-ink) !important;
+}
+
+body.nav-light .navbar .navbar-toggler {
+  border-color: var(--metro-line);
+}
+
+body.nav-light .navbar .navbar-toggler-icon {
+  filter: invert(1);
+}
+
+body.nav-light .source-tag {
+  color: var(--metro-mute);
+}
+
+body.nav-light .source-tag a:hover {
+  color: var(--metro-ink);
 }
 
 /* ── Sidebar ────────────────────────────────────────────────────────────── */
@@ -252,12 +336,11 @@ h3.card-header {
 }
 
 .sidebar-title {
-  font-weight: 600;
-  font-size: 0.82rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--metro-mute);
-  margin-bottom: 8px;
+  font-weight: 650;
+  font-size: 0.95rem;
+  letter-spacing: 0;
+  color: var(--metro-ink);
+  margin-bottom: 10px;
 }
 
 /* ── Form controls ──────────────────────────────────────────────────────── */
@@ -265,9 +348,9 @@ h3.card-header {
 .form-control,
 .form-select {
   border: 1px solid var(--metro-line);
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 0.9rem;
-  background: var(--metro-card);
+  background: #FFFFFF;
   color: var(--metro-ink);
 }
 
@@ -285,7 +368,7 @@ label,
   margin-bottom: 4px;
 }
 
-/* ── Segmented pill radios (period filters, map metrics) ────────────────── */
+/* ── Segmented radios (period filters, map metrics): joined segments ─── */
 
 .pill-group .shiny-input-container {
   margin-bottom: 0;
@@ -295,16 +378,20 @@ label,
 .pill-group .shiny-options-group {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 0;
 }
 
 /* Bootstrap indents inline radios with .shiny-input-container-inline
    .shiny-options-group .radio-inline; match that specificity to drop it */
 .pill-group .shiny-options-group label.radio-inline {
   position: relative;
-  margin: 0;
+  margin: 0 0 0 -1px;
   padding: 0;
   font-weight: 500;
+}
+
+.pill-group .shiny-options-group label.radio-inline:first-child {
+  margin-left: 0;
 }
 
 .pill-group .radio-inline input[type="radio"] {
@@ -313,11 +400,16 @@ label,
   pointer-events: none;
 }
 
-/* the sidebar is too narrow for three pills in a row: the first option takes
-   the full width and the other two share the row below */
+/* the sidebar is too narrow for three segments in a row: the first option
+   takes the full width and the other two share the row below */
 .sidebar .pill-group .shiny-options-group {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.sidebar .pill-group label.radio-inline {
+  margin: 0 0 -1px 0;
 }
 
 .sidebar .pill-group label.radio-inline:first-child {
@@ -331,31 +423,54 @@ label,
 
 .pill-group .radio-inline span {
   display: inline-block;
-  padding: 4px 12px;
+  padding: 5px 12px;
   border: 1px solid var(--metro-line);
-  border-radius: 999px;
+  border-radius: 0;
   font-size: 0.8rem;
   color: var(--metro-ink-soft);
-  background: var(--metro-card);
+  background: #FFFFFF;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.pill-group .shiny-options-group label.radio-inline:first-child span {
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+}
+
+.pill-group .shiny-options-group label.radio-inline:last-child span {
+  border-top-right-radius: 6px;
+  border-bottom-right-radius: 6px;
+}
+
+.sidebar .pill-group .shiny-options-group label.radio-inline:first-child span {
+  border-radius: 6px 6px 0 0;
+}
+
+.sidebar .pill-group .shiny-options-group label.radio-inline:nth-child(2) span {
+  border-radius: 0 0 0 6px;
+}
+
+.sidebar .pill-group .shiny-options-group label.radio-inline:last-child span {
+  border-radius: 0 0 6px 0;
 }
 
 .pill-group .radio-inline span:hover {
-  background: var(--tint-faint);
-  color: var(--metro-blue);
+  background: #F4F2EC;
+  color: var(--metro-ink);
 }
 
 .pill-group .radio-inline input:checked+span {
-  background: var(--tint);
+  background: var(--metro-blue);
   border-color: var(--metro-blue);
-  color: var(--metro-blue);
+  color: #FFFFFF;
   font-weight: 600;
 }
 
 .pill-group .radio-inline input:focus-visible+span {
-  box-shadow: 0 0 0 3px var(--tint-focus);
+  box-shadow: 0 0 0 2px var(--tint-focus);
+  position: relative;
+  z-index: 1;
 }
 
 /* ── Sidebar selection info box ─────────────────────────────────────────── */
@@ -363,9 +478,9 @@ label,
 .info-box {
   margin-top: 4px;
   padding: 12px 14px;
-  background: var(--metro-bg);
+  background: #F7F6F2;
   border: 1px solid var(--metro-line);
-  border-radius: 10px;
+  border-radius: 6px;
   font-size: 0.8rem;
   line-height: 1.45;
   color: var(--metro-ink-soft);
@@ -449,9 +564,9 @@ label,
 .header-select .form-select {
   font-size: 0.8rem;
   font-weight: 500;
-  padding: 3px 28px 3px 12px;
+  padding: 3px 28px 3px 10px;
   height: auto;
-  border-radius: 999px;
+  border-radius: 6px;
   color: var(--metro-ink-soft);
 }
 
@@ -515,6 +630,14 @@ label,
   color: var(--metro-nav-active);
 }
 
+/* EKIO credit badge: baked navy tile, so it sits flush on the dark navbar
+   and reads as a stamp on the offwhite experiment */
+.navbar-logo {
+  height: 26px;
+  width: auto;
+  display: block;
+}
+
 /* ── echarts4r container ───────────────────────────────────────────────── */
 
 .echarts4r {
@@ -562,8 +685,8 @@ label,
 /* ── Map: popups and legend ────────────────────────────────────────────── */
 
 .leaflet-popup-content-wrapper {
-  border-radius: 10px;
-  box-shadow: 0 4px 20px rgba(var(--metro-ink-rgb), 0.16);
+  border-radius: 6px;
+  box-shadow: 0 1px 6px rgba(var(--metro-ink-rgb), 0.18);
 }
 
 .leaflet-popup-content {
@@ -668,9 +791,9 @@ label,
   font-size: 12px;
   line-height: 1.5;
   color: var(--metro-ink-soft);
-  background: rgba(251, 250, 243, 0.95);
-  border-radius: 10px;
-  box-shadow: var(--shadow-card);
+  background: rgba(255, 255, 255, 0.97);
+  border-radius: 6px;
+  box-shadow: none;
   border: 1px solid var(--metro-line);
   padding: 10px 12px;
 }
@@ -687,7 +810,6 @@ label,
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  transition: background 0.12s ease, color 0.12s ease;
 }
 
 .download-icon:hover,

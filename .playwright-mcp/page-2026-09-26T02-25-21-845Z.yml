@@ -1,0 +1,59 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - link "Metrô em Dados" [ref=e6] [cursor=pointer]
+      - tablist [ref=e10]:
+        - tab "Início" [selected] [ref=e11] [cursor=pointer]
+        - tab "Linhas" [ref=e14] [cursor=pointer]
+        - tab "Estações" [ref=e17] [cursor=pointer]
+        - tab "Mapa" [ref=e21] [cursor=pointer]
+        - tab "Download" [ref=e24] [cursor=pointer]
+        - tab "Sobre" [ref=e28] [cursor=pointer]
+        - listitem [ref=e31]:
+          - generic [ref=e32]:
+            - text: "Dados até jul/2026 · Fonte:"
+            - 'link "{metrosp}" [ref=e33] [cursor=pointer]':
+              - /url: https://viniciusoike.github.io/metrosp/
+        - listitem [ref=e34]:
+          - img "Desenvolvido por EKIO" [ref=e35]
+  - generic [ref=e37]:
+    - tabpanel [ref=e38]:
+      - generic [ref=e39]:
+        - heading "Explore a demanda do Metrô de São Paulo" [level=2] [ref=e40]
+        - paragraph [ref=e41]: Séries mensais por linha, médias por estação e o mapa da rede, de jan/2012 a jul/2026.
+        - paragraph [ref=e42]:
+          - text: Dados do pacote
+          - 'link "{metrosp}" [ref=e43] [cursor=pointer]':
+            - /url: https://viniciusoike.github.io/metrosp/
+          - text: · escolha um ponto de partida abaixo
+      - generic [ref=e44]:
+        - generic [ref=e46]:
+          - heading "Linhas" [level=3] [ref=e47]
+          - generic [ref=e48]:
+            - paragraph [ref=e49]: Embarques e transportados por linha, com KPIs e tendência.
+            - link "Explorar linhas" [ref=e50] [cursor=pointer]:
+              - /url: "#"
+        - generic [ref=e54]:
+          - heading "Estações" [level=3] [ref=e55]
+          - generic [ref=e56]:
+            - paragraph [ref=e57]: Média em dias úteis e série diária por estação.
+            - link "Explorar estações" [ref=e58] [cursor=pointer]:
+              - /url: "#"
+        - generic [ref=e62]:
+          - heading "Mapa" [level=3] [ref=e63]
+          - generic [ref=e64]:
+            - paragraph [ref=e65]: Demanda e variações na rede — clique numa estação para a série.
+            - link "Abrir o mapa" [ref=e66] [cursor=pointer]:
+              - /url: "#"
+        - generic [ref=e70]:
+          - heading "Download" [level=3] [ref=e71]
+          - generic [ref=e72]:
+            - paragraph [ref=e73]: Bases completas em CSV, Excel e formatos espaciais.
+            - link "Baixar dados" [ref=e74] [cursor=pointer]:
+              - /url: "#"
+    - text:              
+  - generic [ref=e77]: Buscar estação...
+  - log [ref=e78]
+  - log [ref=e79]
+  - log [ref=e80]
+  - log [ref=e81]
