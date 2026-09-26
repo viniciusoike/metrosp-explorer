@@ -2,6 +2,26 @@
 # Data objects and helpers are defined in global.R.
 
 function(input, output, session) {
+  ## Home navigation ----
+  # The brand title and the Início shortcut cards navigate via nav_select;
+  # bookmarking picks up main_nav automatically.
+
+  observeEvent(input$brand_home, {
+    nav_select("main_nav", "inicio")
+  })
+  observeEvent(input$go_linhas, {
+    nav_select("main_nav", "linhas")
+  })
+  observeEvent(input$go_estacoes, {
+    nav_select("main_nav", "estacoes")
+  })
+  observeEvent(input$go_mapa, {
+    nav_select("main_nav", "mapa")
+  })
+  observeEvent(input$go_download, {
+    nav_select("main_nav", "download")
+  })
+
   ## Lines tab ----
 
   lines_data <- reactive({
