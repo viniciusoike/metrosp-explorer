@@ -530,7 +530,7 @@ function(input, output, session) {
         )
     }
 
-    e |> e_metro_defaults()
+    e |> e_metro_defaults(date_format = "day")
   })
 
   output$dl_sta_csv <- downloadHandler(
