@@ -333,13 +333,21 @@ metro_theme <- bs_theme(
 # because leaflet.providers 2.0.0 has no {key} slot in the CartoDB template
 # (rstudio/leaflet#965), so build the tile layer by hand. The key is
 # restricted by referrer in the CARTO dashboard; without it (or from a domain
-# outside the allowlist) tiles come back watermarked or 403.
+# outside the allowlist) tiles come back watermarked or 403. On Connect Cloud
+# the key must be set as an app environment variable.
 
 CARTO_KEY <- Sys.getenv("CARTO_BASEMAP_SHINY")
 
+if (!nzchar(CARTO_KEY)) {
+  cli::cli_warn(c(
+    "{.envvar CARTO_BASEMAP_SHINY} is not set.",
+    "i" = "CARTO basemap tiles will show an API key watermark."
+  ))
+}
+
 add_carto_tiles <- function(map, variant = "light_all") {
   url <- paste0(
-    "https://{s}.basemaps.cartocdn.com/",
+    "https://basemaps.cartocdn.com/rastertiles/",
     variant,
     "/{z}/{x}/{y}{r}.png"
   )
@@ -354,7 +362,7 @@ add_carto_tiles <- function(map, variant = "light_all") {
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       'contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
     ),
-    options = tileOptions(subdomains = "abcd", maxZoom = 20)
+    options = tileOptions(maxZoom = 20)
   )
   return(map)
 }
