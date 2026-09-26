@@ -1894,7 +1894,7 @@
         "Package": "metrosp",
         "Type": "Package",
         "Title": "São Paulo Metro Passenger Demand Data",
-        "Version": "1.2.1",
+        "Version": "1.3.0",
         "Authors@R": "c(\n    person(\n      \"Vinicius\", \"Oike\",\n      email = \"viniciusoike@gmail.com\",\n      role = c(\"aut\", \"cre\", \"cph\"),\n      comment = c(ORCID = \"0009-0005-8015-9189\")\n    )\n  )",
         "Description": "Provides passenger demand data for the São Paulo metro\n        system, covering 2012 to 2026. Datasets include monthly\n        passenger entries and transported counts by line, average\n        weekday station entries, daily station entries, and spatial\n        geometries for metro and commuter train lines and stations. The\n        bundled datasets are a fixed snapshot, so analyses stay\n        reproducible and examples run offline; more recent data is\n        published separately as the upstream sources are updated.",
         "License": "MIT + file LICENSE",
@@ -1903,7 +1903,7 @@
         "LazyData": "true",
         "Depends": "R (>= 3.5.0)",
         "Imports": "cli, jsonlite, tools, utils",
-        "Suggests": "bizdays, spelling, dataverse, digest, dplyr (>= 1.2.0),\nggplot2, knitr, piggyback, quarto, rmarkdown, sf, tarchetypes,\ntargets, testthat (>= 3.0.0), waldo, withr",
+        "Suggests": "bizdays, spelling, dataverse, digest, dplyr (>= 1.2.0),\nggplot2, knitr, quarto, rmarkdown, sf, tarchetypes, targets,\ntestthat (>= 3.0.0), waldo, withr",
         "Config/testthat/edition": "3",
         "Roxygen": "list(markdown = TRUE)",
         "RoxygenNote": "7.3.3",
@@ -1911,15 +1911,15 @@
         "BugReports": "https://github.com/viniciusoike/metrosp/issues",
         "VignetteBuilder": "quarto",
         "Repository": "https://viniciusoike.r-universe.dev",
-        "Date/Publication": "2026-09-02 23:00:49 UTC",
+        "Date/Publication": "2026-09-20 23:09:32 UTC",
         "RemoteUrl": "https://github.com/viniciusoike/metrosp",
         "RemoteRef": "HEAD",
-        "RemoteSha": "bde52afefe92af1f7de36073e4c2238416d50dfe",
+        "RemoteSha": "0de4448174fa225b5f5cb0562ba57f0f806c885a",
         "NeedsCompilation": "no",
-        "Packaged": "2026-09-03 01:17:55 UTC; root",
+        "Packaged": "2026-09-21 17:17:34 UTC; root",
         "Author": "Vinicius Oike [aut, cre, cph] (ORCID:\n    <https://orcid.org/0009-0005-8015-9189>)",
         "Maintainer": "Vinicius Oike <viniciusoike@gmail.com>",
-        "Built": "R 4.5.3; ; 2026-09-03 01:20:39 UTC; unix"
+        "Built": "R 4.5.3; ; 2026-09-21 17:22:31 UTC; unix"
       }
     },
     "mime": {
@@ -2939,7 +2939,7 @@
     },
     "trendseries": {
       "Source": "CRAN",
-      "Repository": "https://viniciusoike.r-universe.dev",
+      "Repository": "https://cloud.r-project.org",
       "description": {
         "Package": "trendseries",
         "Type": "Package",
@@ -3393,23 +3393,20 @@
     ".posit/publish/metrosp-explorer-MA08.toml": {
       "checksum": "3110670ab7114b6b578095d1a65df444"
     },
-    ".Rprofile": {
-      "checksum": "96e7583a7bb9ca1ea559ce69e288480e"
-    },
-    "global.R": {
-      "checksum": "3a5904bf837ee9aeb590e0d8773ada33"
-    },
     "LICENSE": {
       "checksum": "8c9a2286ab291e54c33e3e793348ce60"
     },
     "README.md": {
       "checksum": "5d934ce790bcb2cd42a080367ea8a461"
     },
+    "global.R": {
+      "checksum": "747029b314a9d002e023cbf96863c510"
+    },
     "renv.lock": {
-      "checksum": "28e1e1de4f7bb340087ebd98036f339c"
+      "checksum": "f20734063cb65a32d5ec825c212c8bde"
     },
     "server.R": {
-      "checksum": "b976dc3954a0440dfe2b15fc9a5eb95b"
+      "checksum": "97fbdc53d784d534c635f0577df69197"
     },
     "static/images/screenshot_app.png": {
       "checksum": "e1c43d4af257bf08a93352aee53b7588"
@@ -3418,10 +3415,16 @@
       "checksum": "c9468133056798b742317184db88b508"
     },
     "ui.R": {
-      "checksum": "1c2cec29176d96d7a3659a06759e0ad4"
+      "checksum": "40b47471f676be557281a05a7bb8ffef"
+    },
+    "www/ekio-badge-wordmark.svg": {
+      "checksum": "133760a69ec8cb7d37a58f0d6c530fa7"
+    },
+    "www/ekio-badge.svg": {
+      "checksum": "0168943dab4074dead73a75942cd27fb"
     },
     "www/styles.css": {
-      "checksum": "357c09ba0b0fea23602905fe1cf85725"
+      "checksum": "7a130740e3d79b32af53a21682e9ac62"
     }
   },
   "users": null
