@@ -440,6 +440,10 @@ function(request) {
                 fmt_month_pt(DATA_MIN),
                 fmt_month_pt(DATA_MAX)
               ),
+              sprintf(
+                "A demanda usa a %s. ",
+                DATA_SOURCE_LABEL
+              ),
               "A aba Download traz as bases completas em vários formatos."
             ),
             tags$h3(class = "card-subhead", "Links"),
@@ -485,8 +489,15 @@ function(request) {
                 )
               ),
               tags$li(
-                tags$b("Linhas 4 e 5: "),
+                tags$b("Linha 4: "),
                 "Insper Dataverse (doi:10.60873/FK2/UTGQ0I)"
+              ),
+              tags$li(
+                tags$b("Linha 5: "),
+                paste(
+                  "METRO SP até jul/2018 e Insper Dataverse a partir de",
+                  "ago/2018, conforme a série"
+                )
               )
             ),
             tags$h3(class = "card-subhead", "Dados espaciais"),
@@ -501,9 +512,24 @@ function(request) {
             tags$h3(class = "card-subhead", "Limitações conhecidas"),
             tags$ul(
               class = "small text-muted",
-              tags$li("Linhas 4/5: passageiros transportados não disponíveis"),
-              tags$li("Linhas 4/5: código de estação é NA"),
-              tags$li("2017: dados apenas de outubro a dezembro"),
+              tags$li(
+                paste(
+                  "A soma de passageiros transportados entre linhas conta",
+                  "baldeações mais de uma vez; não é um total único da rede."
+                )
+              ),
+              tags$li(
+                paste(
+                  "Linha 5: a série mensal transportada por estação termina",
+                  "em jul/2018; as entradas diárias continuam depois."
+                )
+              ),
+              tags$li(
+                paste(
+                  "Demanda por estação publicada pelo METRO SP em 2017:",
+                  "dados apenas de outubro a dezembro"
+                )
+              ),
               tags$li(
                 sprintf(
                   "A fonte ainda não publicou os meses posteriores a %s",
@@ -521,6 +547,7 @@ function(request) {
       tags$span(
         class = "source-tag",
         sprintf("Dados até %s", fmt_month_pt(DATA_MAX)),
+        sprintf(" · %s", DATA_SOURCE_LABEL),
         " · Fonte: ",
         # metrosp consolidates and processes the raw sources (METRO SP,
         # Insper Dataverse, GeoSampa), so the package is the credited
