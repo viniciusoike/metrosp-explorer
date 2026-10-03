@@ -9,7 +9,8 @@ fake_reader <- function(dataset, source, quiet) {
   return(data.frame(dataset = dataset, source = source))
 }
 
-fallback <- suppressWarnings(load_demand_data(fake_reader))
+stable_manifest <- function() list(datasets = list(revision = "stable"))
+fallback <- suppressWarnings(load_demand_data(fake_reader, stable_manifest))
 expected_bundled <- paste(DEMAND_DATASETS, "bundled", sep = ":")
 
 if (!identical(attr(fallback, "source"), "bundled")) {
@@ -52,6 +53,36 @@ if (
     !grepl("Paulista", complex_rows$popup_html, fixed = TRUE)
 ) {
   cli::cli_abort("The shared complex popup must retain both station names.")
+}
+
+
+manifest_calls <- 0L
+changing_manifest <- function() {
+  manifest_calls <<- manifest_calls + 1L
+  return(list(datasets = list(revision = manifest_calls)))
+}
+successful_reader <- function(dataset, source, quiet) {
+  return(data.frame(dataset = dataset, source = source))
+}
+changed_release <- suppressWarnings(
+  load_demand_data(successful_reader, changing_manifest)
+)
+if (!identical(attr(changed_release, "source"), "bundled")) {
+  cli::cli_abort(
+    "A release change during loading must select all bundled tables."
+  )
+}
+if (
+  !all(
+    vapply(changed_release, function(x) x$source[[1]], character(1)) ==
+      "bundled"
+  )
+) {
+  cli::cli_abort("A changing release must not retain any remote table.")
+}
+stable_release <- load_demand_data(successful_reader, stable_manifest)
+if (!identical(attr(stable_release, "source"), "rolling")) {
+  cli::cli_abort("An unchanged release must retain all remote tables.")
 }
 
 cli::cli_alert_success("App data-boundary contract passed.")

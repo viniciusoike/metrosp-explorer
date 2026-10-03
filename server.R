@@ -268,18 +268,29 @@ function(input, output, session) {
     if (!isTRUE(target %in% choices) && isTRUE(target %in% names(choices))) {
       target <- unname(choices[[target]])
     }
+    selected <- if (isTRUE(target %in% choices)) {
+      unname(target)
+    } else {
+      unname(choices[1])
+    }
     pending_station(NULL)
-    freezeReactiveValue(input, "sta_station")
+    if (!identical(selected, input$sta_station)) {
+      freezeReactiveValue(input, "sta_station")
+    }
     updateSelectizeInput(
       session,
       "sta_station",
       choices = choices,
-      selected = if (isTRUE(target %in% choices)) target else choices[1]
+      selected = selected
     )
   })
 
-  observeEvent(input$sta_station, {
-    req(input$sta_station)
+  observeEvent(list(input$sta_line, input$sta_station), {
+    req(input$sta_line, input$sta_station)
+    req(any(
+      stations_by_line$line_number == input$sta_line &
+        stations_by_line$station_id == input$sta_station
+    ))
     years <- sta_daily_years |>
       filter(
         line_number == input$sta_line,
@@ -360,7 +371,10 @@ function(input, output, session) {
     ln <- input$sta_line
     sta <- input$sta_station
     yr <- input$sta_year
-    req(ln, sta, yr)
+    req(ln, sta)
+    if (!isTruthy(yr)) {
+      return(sta_daily[0, ])
+    }
     sta_daily |>
       filter(line_number == ln, station_id == sta, year == as.integer(yr)) |>
       arrange(date)
@@ -509,17 +523,21 @@ function(input, output, session) {
   })
 
   output$sta_daily_title <- renderText({
-    yr <- if (!is.null(input$sta_year) && nzchar(input$sta_year)) {
-      input$sta_year
-    } else {
-      ""
+    title <- paste0(selected_station_name(), " — Entradas diárias")
+    if (!isTruthy(input$sta_year)) {
+      return(title)
     }
-    paste0(selected_station_name(), " — Entradas diárias (", yr, ")")
+    paste0(title, " (", input$sta_year, ")")
   })
 
   output$sta_daily_chart <- renderEcharts4r({
     df <- sta_daily_data()
-    validate(need(nrow(df) > 0, "Sem dados diários para o ano selecionado."))
+    empty_message <- if (isTruthy(input$sta_year)) {
+      "Sem dados diários para o ano selecionado."
+    } else {
+      "Sem dados diários para esta estação."
+    }
+    validate(need(nrow(df) > 0, empty_message))
 
     col <- unname(line_colors[input$sta_line])
     df <- df |> mutate(rolling7 = roll_mean(value))

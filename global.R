@@ -386,14 +386,39 @@ DEMAND_DATASETS <- c(
   "station_entries_daily"
 )
 
-load_demand_data <- function(read_fun = metrosp::read_metro_demand) {
+read_demand_manifest <- function() {
+  path <- tempfile(fileext = ".json")
+  on.exit(unlink(path), add = TRUE)
+  utils::download.file(
+    "https://github.com/viniciusoike/metrosp/releases/download/data-latest/manifest.json",
+    path,
+    quiet = TRUE,
+    mode = "wb"
+  )
+  return(jsonlite::read_json(path, simplifyVector = FALSE))
+}
+
+load_demand_data <- function(
+  read_fun = metrosp::read_metro_demand,
+  manifest_fun = read_demand_manifest
+) {
   rolling <- tryCatch(
-    lapply(
-      DEMAND_DATASETS,
-      read_fun,
-      source = "remote",
-      quiet = TRUE
-    ),
+    {
+      manifest_before <- manifest_fun()
+      tables <- lapply(
+        DEMAND_DATASETS,
+        read_fun,
+        source = "remote",
+        quiet = TRUE
+      )
+      manifest_after <- manifest_fun()
+      if (!identical(manifest_before, manifest_after)) {
+        cli::cli_abort(
+          "The rolling release changed while loading demand tables."
+        )
+      }
+      tables
+    },
     error = function(e) {
       cli::cli_warn(c(
         "Could not load a coherent rolling demand release.",
