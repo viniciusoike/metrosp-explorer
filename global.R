@@ -379,41 +379,104 @@ if (!HAS_TRENDSERIES) {
 
 # Pre-build data ----
 
-## Line-level monthly (entrance) ----
-ent <- metrosp::passengers_entrance |>
+DEMAND_DATASETS <- c(
+  "line_entries_monthly",
+  "line_transported_monthly",
+  "station_transported_monthly",
+  "station_entries_daily"
+)
+
+load_demand_data <- function(read_fun = metrosp::read_metro_demand) {
+  rolling <- tryCatch(
+    lapply(
+      DEMAND_DATASETS,
+      read_fun,
+      source = "remote",
+      quiet = TRUE
+    ),
+    error = function(e) {
+      cli::cli_warn(c(
+        "Could not load a coherent rolling demand release.",
+        "x" = conditionMessage(e),
+        "i" = "Using all four bundled snapshot tables."
+      ))
+      NULL
+    }
+  )
+
+  if (is.null(rolling)) {
+    rolling <- lapply(
+      DEMAND_DATASETS,
+      read_fun,
+      source = "bundled",
+      quiet = TRUE
+    )
+    attr(rolling, "source") <- "bundled"
+  } else {
+    attr(rolling, "source") <- "rolling"
+  }
+  names(rolling) <- DEMAND_DATASETS
+  return(rolling)
+}
+
+demand_data <- load_demand_data()
+DATA_SOURCE <- attr(demand_data, "source")
+DATA_SOURCE_LABEL <- if (identical(DATA_SOURCE, "rolling")) {
+  "publicação contínua"
+} else {
+  "snapshot incluído no pacote"
+}
+
+line_entries_monthly <- demand_data$line_entries_monthly
+line_transported_monthly <- demand_data$line_transported_monthly
+station_transported_monthly <- demand_data$station_transported_monthly
+station_entries_daily <- demand_data$station_entries_daily
+
+## Line-level monthly (entries) ----
+ent <- line_entries_monthly |>
   filter(
-    metric_abb == "total",
+    metric == "total",
     line_number %in% as.integer(LINES)
   ) |>
   mutate(line_number = as.character(line_number)) |>
   select(date, line_number, value, year)
 
 ## Line-level monthly (transported) ----
-# the package publishes transported counts in thousands; the app counts
-# individual passengers everywhere, as passengers_entrance does
-trans <- metrosp::passengers_transported |>
+trans <- line_transported_monthly |>
   filter(
-    metric_abb == "total",
+    metric == "total",
     line_number %in% as.integer(LINES)
   ) |>
-  mutate(line_number = as.character(line_number), value = value * 1000) |>
+  mutate(line_number = as.character(line_number)) |>
   select(date, line_number, value, year)
 
-## Station averages (monthly weekday avg) ----
-sta_avg <- metrosp::station_averages |>
+## Station transported (monthly weekday average) ----
+sta_avg <- station_transported_monthly |>
   mutate(line_number = as.character(line_number)) |>
   filter(line_number %in% LINES) |>
-  select(date, line_number, station_name, value = avg_passenger, year)
+  select(date, line_number, station_id, station_name, value, year)
 
-## Station daily ----
-sta_daily <- metrosp::station_daily |>
+## Station entries (daily) ----
+sta_daily <- station_entries_daily |>
   mutate(line_number = as.character(line_number)) |>
   filter(line_number %in% LINES) |>
-  select(date, line_number, station_name, value = passengers, year)
+  select(date, line_number, station_id, station_name, value, year)
 
 ## Data window (drives copy, input limits, freshness stamp) ----
-DATA_MIN <- min(ent$date, na.rm = TRUE)
-DATA_MAX <- max(c(ent$date, sta_daily$date), na.rm = TRUE)
+DATA_MIN <- min(
+  ent$date,
+  trans$date,
+  sta_avg$date,
+  sta_daily$date,
+  na.rm = TRUE
+)
+DATA_MAX <- max(
+  ent$date,
+  trans$date,
+  sta_avg$date,
+  sta_daily$date,
+  na.rm = TRUE
+)
 
 ## Period presets ----
 # The series are monthly, so a day-granular dateInput offered precision the
@@ -439,7 +502,7 @@ period_start <- function(period) {
 
 ## Spatial data ----
 sf_lines <- tryCatch(
-  metrosp::lines |>
+  metrosp::rail_lines |>
     filter(status == "current", type == "metro") |>
     mutate(line_number = as.character(line_number)) |>
     filter(line_number %in% LINES),
@@ -450,7 +513,7 @@ sf_lines <- tryCatch(
 )
 
 sf_stations <- tryCatch(
-  metrosp::stations |>
+  metrosp::rail_stations |>
     filter(status == "current", type == "metro") |>
     mutate(line_number = as.character(line_number)) |>
     filter(line_number %in% LINES),
@@ -461,8 +524,11 @@ sf_stations <- tryCatch(
 )
 
 ## Station lookup per line ----
-stations_by_line <- sta_avg |>
-  distinct(line_number, station_name) |>
+stations_by_line <- bind_rows(
+  sta_avg |> select(line_number, station_id, station_name),
+  sta_daily |> select(line_number, station_id, station_name)
+) |>
+  distinct(line_number, station_id, station_name) |>
   arrange(line_number, station_name)
 
 ## Map palettes ----
@@ -546,19 +612,19 @@ if (!is.null(sf_stations)) {
 
   map_line_ref <- sta_avg |>
     filter(!is.na(value)) |>
-    group_by(line_number, station_name) |>
+    group_by(line_number, station_id) |>
     summarise(line_max = max(date), .groups = "drop") |>
-    group_by(station_name) |>
+    group_by(station_id) |>
     mutate(ref_date = min(line_max)) |>
     ungroup() |>
     mutate(prev_date = prev_year_month(ref_date)) |>
-    select(line_number, station_name, ref_date, prev_date)
+    select(line_number, station_id, ref_date, prev_date)
 
   sta_map_metrics <- sta_avg |>
     filter(!is.na(value)) |>
-    inner_join(map_line_ref, by = c("line_number", "station_name")) |>
+    inner_join(map_line_ref, by = c("line_number", "station_id")) |>
     filter(date <= ref_date) |>
-    group_by(line_number, station_name, ref_date, prev_date) |>
+    group_by(line_number, station_id, ref_date, prev_date) |>
     summarise(
       avg_12m = mean_or_na(value[date > ref_date - 365]),
       avg_prior = mean_or_na(
@@ -571,16 +637,17 @@ if (!is.null(sf_stations)) {
     )
 
   map_per_line <- sf_stations |>
-    select(line_number, station_name) |>
-    left_join(sta_map_metrics, by = c("line_number", "station_name")) |>
-    arrange(station_name, as.integer(line_number))
+    select(line_number, station_id, station_name) |>
+    left_join(sta_map_metrics, by = c("line_number", "station_id")) |>
+    arrange(station_id, as.integer(line_number))
 
   # avg_12m must be summarised last: it rebinds the name the pct_* blocks read
   sf_stations_map <- map_per_line |>
-    group_by(station_name) |>
+    group_by(station_id) |>
     summarise(
+      station_name = paste(unique(station_name), collapse = " / "),
       first_line = line_number[1],
-      n_lines = dplyr::n(),
+      n_lines = dplyr::n_distinct(line_number),
       # constant within a station by construction; [1] with an NA guard in
       # case a station-line ever fails the demand join
       ref_date = {
@@ -632,9 +699,9 @@ if (!is.null(sf_stations)) {
   # comparable. 2017 covers only Oct-Dec (known source limitation).
   map_yearly <- sta_avg |>
     filter(!is.na(value)) |>
-    group_by(line_number, station_name, year) |>
+    group_by(line_number, station_id, year) |>
     summarise(avg = mean(value), .groups = "drop") |>
-    group_by(station_name, year) |>
+    group_by(station_id, year) |>
     summarise(avg = sum(avg), .groups = "drop")
 
   # before 2017 only Line 4 (Insper) reports station data, which would give
@@ -649,7 +716,7 @@ if (!is.null(sf_stations)) {
     setNames(MAP_YEARS, MAP_YEARS),
     function(y) {
       d <- map_yearly[map_yearly$year == y, ]
-      d$avg[match(sf_stations_map$station_name, d$station_name)]
+      d$avg[match(sf_stations_map$station_id, d$station_id)]
     }
   )
 
@@ -664,20 +731,20 @@ if (!is.null(sf_stations)) {
     )
   }
 
-  map_line_link <- function(ln, station, avg) {
-    # station names contain no quotes today; escape defensively anyway
-    target <- gsub("'", "\\\\'", paste(ln, station, sep = "||"))
+  map_line_link <- function(ln, station_id, station_name, avg) {
+    target <- gsub("'", "\\\\'", paste(ln, station_id, sep = "||"))
     sprintf(
       paste0(
         '<a href="#" class="map-popup-link" onclick="',
         "Shiny.setInputValue('map_go_station', '%s', {priority: 'event'});",
         ' return false;">',
-        '<span class="map-dot" style="background:%s"></span>%s',
+        '<span class="map-dot" style="background:%s"></span>%s · %s',
         '<span class="map-popup-link-val">%s</span>',
         '<span class="map-arrow">&rarr;</span></a>'
       ),
       target,
       line_colors[ln],
+      station_name,
       line_labels[ln],
       if (is.na(avg)) "—" else fmt_n(avg)
     )
@@ -685,21 +752,26 @@ if (!is.null(sf_stations)) {
 
   map_station_info <- sf::st_drop_geometry(sf_stations_map)
   map_per_line_df <- sf::st_drop_geometry(map_per_line) |>
-    semi_join(stations_by_line, by = c("line_number", "station_name"))
+    semi_join(stations_by_line, by = c("line_number", "station_id"))
 
   map_popup_html <- vapply(
     seq_len(nrow(map_station_info)),
     function(i) {
       s <- map_station_info[i, ]
-      d <- map_per_line_df[map_per_line_df$station_name == s$station_name, ]
+      d <- map_per_line_df[map_per_line_df$station_id == s$station_id, ]
       links <- if (nrow(d) > 0) {
         paste0(
-          '<div class="map-popup-caption">Ver série mensal</div>',
+          '<div class="map-popup-caption">Abrir dados da estação</div>',
           paste(
             vapply(
               seq_len(nrow(d)),
               function(j) {
-                map_line_link(d$line_number[j], d$station_name[j], d$avg_12m[j])
+                map_line_link(
+                  d$line_number[j],
+                  d$station_id[j],
+                  d$station_name[j],
+                  d$avg_12m[j]
+                )
               },
               character(1)
             ),
@@ -717,7 +789,7 @@ if (!is.null(sf_stations)) {
         '<div class="map-popup-metrics">',
         # same order and definitions as the KPI cards on the other tabs
         map_metric_row(
-          "Último mês",
+          "Transportados — último mês",
           if (is.na(s$latest_month)) {
             "—"
           } else {
@@ -758,7 +830,7 @@ if (!is.null(sf_stations)) {
         unname(line_labels[s$first_line])
       } else {
         lines_i <- map_per_line_df$line_number[
-          map_per_line_df$station_name == s$station_name
+          map_per_line_df$station_id == s$station_id
         ]
         paste0("Linhas ", paste(sort(as.integer(lines_i)), collapse = " e "))
       }
@@ -771,7 +843,11 @@ if (!is.null(sf_stations)) {
     demand <- if (is.na(s$avg_12m)) {
       "Sem dados de demanda"
     } else {
-      paste0("Média dias úteis: <b>", fmt_n(s$avg_12m), "</b> pass./dia")
+      paste0(
+        "Transportados/dia útil: <b>",
+        fmt_n(s$avg_12m),
+        "</b> pass./dia"
+      )
     }
     htmltools::HTML(paste0(
       "<b>",
@@ -798,13 +874,14 @@ if (!is.null(sf_stations)) {
 
 ## Available years for daily station data ----
 sta_daily_years <- sta_daily |>
-  distinct(line_number, station_name, year) |>
-  arrange(line_number, station_name, desc(year))
+  distinct(line_number, station_id, year) |>
+  arrange(line_number, station_id, desc(year))
 
 ## Selection info boxes ----
 # Definitions and sources follow the metrosp documentation
-# (?passengers_entrance, ?passengers_transported, ?station_averages,
-# ?station_daily); coverage dates are computed from the data.
+# (?line_entries_monthly, ?line_transported_monthly,
+# ?station_transported_monthly, ?station_entries_daily); coverage dates are
+# computed from the loaded tables.
 
 metric_info <- list(
   entrance = list(
@@ -818,16 +895,16 @@ metric_info <- list(
     label = "Passageiros transportados",
     definition = paste(
       "Passageiros que viajaram na linha no mês: quem entrou pelas catracas",
-      "mais quem chegou por baldeação de outra linha. Por isso o total",
-      "supera o de embarques."
+      "mais quem chegou por baldeação de outra linha. A soma de linhas conta",
+      "uma viagem com baldeação mais de uma vez; não é um total único da rede."
     )
   ),
   station = list(
-    label = "Embarques na estação",
+    label = "Demanda da estação",
     definition = paste(
-      "A série mensal mostra a média de passageiros que entraram na estação",
-      "por dia útil. A série diária mostra as entradas de cada dia, com a",
-      "média móvel de 7 dias em destaque."
+      "A série mensal mostra a média de passageiros transportados por dia útil.",
+      "A série diária mostra as entradas de cada dia, com a média móvel de",
+      "7 dias em destaque. As duas séries medem conceitos diferentes."
     )
   )
 )
@@ -847,18 +924,22 @@ line_coverage <- bind_rows(
   group_by(metric, line_number) |>
   summarise(first = min(date), last = max(date), .groups = "drop")
 
-# Line 5 changed operator in Aug 2018: METRO SP reported it until then and the
-# Insper Dataverse carries it afterwards (only for entries and station data).
-# `first` is the first month of the series shown.
 line_source <- function(line, dataset, first) {
-  if (dataset == "transported" || !line %in% c("4", "5")) {
+  if (!line %in% c("4", "5")) {
     return("METRO SP")
   }
-  if (
-    line == "4" ||
-      dataset == "station_daily" ||
-      first >= as.Date("2018-08-01")
-  ) {
+
+  if (line == "4") {
+    return("Insper Dataverse")
+  }
+
+  if (dataset == "station_entries_daily") {
+    return("Insper Dataverse")
+  }
+  if (dataset %in% c("transported", "station_transported_monthly")) {
+    return("METRO SP")
+  }
+  if (!is.null(first) && first >= as.Date("2018-08-01")) {
     return("Insper Dataverse")
   }
   return("METRO SP até jul/2018, Insper Dataverse depois")
@@ -933,22 +1014,22 @@ lines_info_box <- function(lines, metric, start, show_trend) {
   return(info_box(info$label, info$definition, rows, notes))
 }
 
-station_info_box <- function(line, station, start, show_trend) {
+station_info_box <- function(line, station_id, start, show_trend) {
   monthly <- sta_avg[
     sta_avg$line_number == line &
-      sta_avg$station_name == station &
+      sta_avg$station_id == station_id &
       !is.na(sta_avg$value),
   ]
   years <- sta_daily_years$year[
     sta_daily_years$line_number == line &
-      sta_daily_years$station_name == station
+      sta_daily_years$station_id == station_id
   ]
 
   sources <- unique(c(
     if (nrow(monthly) > 0) {
-      line_source(line, "station_averages", min(monthly$date))
+      line_source(line, "station_transported_monthly", min(monthly$date))
     },
-    if (length(years) > 0) line_source(line, "station_daily", NULL)
+    if (length(years) > 0) line_source(line, "station_entries_daily", NULL)
   ))
   detail <- c(
     if (nrow(monthly) > 0) {
@@ -971,6 +1052,9 @@ station_info_box <- function(line, station, start, show_trend) {
   }
 
   notes <- c(
+    if (line == "5" && nrow(monthly) > 0) {
+      "A série mensal transportada termina em jul/2018; a série diária de entradas continua depois."
+    },
     if (
       line == "1" &&
         start <= as.Date("2016-06-01") &&
@@ -996,79 +1080,79 @@ station_info_box <- function(line, station, start, show_trend) {
 # Downloads serve the package datasets as-is, so the schema here matches the
 # pkgdown documentation. Computed from the data so it never drifts.
 dataset_info <- list(
-  passengers_entrance = list(
+  line_entries_monthly = list(
     label = "Entrada de passageiros por linha (mensal)",
     desc = paste(
       "Passageiros entrando nas estações, agregados por linha.",
-      "Inclui todas as métricas (coluna metric_abb), não apenas o total."
+      "Inclui todas as métricas, não apenas o total."
     ),
-    cols = names(metrosp::passengers_entrance),
-    rows = nrow(metrosp::passengers_entrance),
+    cols = names(line_entries_monthly),
+    rows = nrow(line_entries_monthly),
     range = paste(
-      min(metrosp::passengers_entrance$date),
+      min(line_entries_monthly$date),
       "a",
-      max(metrosp::passengers_entrance$date)
+      max(line_entries_monthly$date)
     ),
     source = "METRO SP / Insper Dataverse"
   ),
-  passengers_transported = list(
+  line_transported_monthly = list(
     label = "Passageiros transportados por linha (mensal)",
     desc = paste(
-      "Passageiros transportados em cada linha, por mês.",
-      "Inclui todas as métricas (coluna metric_abb)."
+      "Passageiros transportados em cada linha, em indivíduos por mês.",
+      "Inclui todas as métricas."
     ),
-    cols = names(metrosp::passengers_transported),
-    rows = nrow(metrosp::passengers_transported),
+    cols = names(line_transported_monthly),
+    rows = nrow(line_transported_monthly),
     range = paste(
-      min(metrosp::passengers_transported$date),
+      min(line_transported_monthly$date),
       "a",
-      max(metrosp::passengers_transported$date)
-    ),
-    source = "METRO SP"
-  ),
-  station_averages = list(
-    label = "Média de embarques por estação (mensal)",
-    desc = "Média de embarques em dias úteis por estação, mensal.",
-    cols = names(metrosp::station_averages),
-    rows = nrow(metrosp::station_averages),
-    range = paste(
-      min(metrosp::station_averages$date),
-      "a",
-      max(metrosp::station_averages$date)
+      max(line_transported_monthly$date)
     ),
     source = "METRO SP / Insper Dataverse"
   ),
-  station_daily = list(
-    label = "Embarques diários por estação",
-    desc = "Embarques diários em cada estação do metrô.",
-    cols = names(metrosp::station_daily),
-    rows = nrow(metrosp::station_daily),
+  station_transported_monthly = list(
+    label = "Transportados por estação (mensal)",
+    desc = "Média de passageiros transportados por dia útil em cada estação.",
+    cols = names(station_transported_monthly),
+    rows = nrow(station_transported_monthly),
     range = paste(
-      min(metrosp::station_daily$date),
+      min(station_transported_monthly$date),
       "a",
-      max(metrosp::station_daily$date)
+      max(station_transported_monthly$date)
     ),
     source = "METRO SP / Insper Dataverse"
   ),
-  lines_spatial = list(
+  station_entries_daily = list(
+    label = "Entradas diárias por estação",
+    desc = "Entradas diárias em cada estação do metrô.",
+    cols = names(station_entries_daily),
+    rows = nrow(station_entries_daily),
+    range = paste(
+      min(station_entries_daily$date),
+      "a",
+      max(station_entries_daily$date)
+    ),
+    source = "METRO SP / Insper Dataverse"
+  ),
+  rail_lines = list(
     label = "Traçados das linhas (espacial)",
     desc = paste(
       "Traçados de metrô e trem (CPTM), atuais e planejados",
       "(LINESTRING, WGS84)."
     ),
-    cols = names(metrosp::lines),
-    rows = nrow(metrosp::lines),
+    cols = names(metrosp::rail_lines),
+    rows = nrow(metrosp::rail_lines),
     range = NULL,
     source = "GeoSampa"
   ),
-  stations_spatial = list(
+  rail_stations = list(
     label = "Estações do metrô (espacial)",
     desc = paste(
       "Ponto de cada estação de metrô e trem, atuais e planejadas",
       "(POINT, WGS84)."
     ),
-    cols = names(metrosp::stations),
-    rows = nrow(metrosp::stations),
+    cols = names(metrosp::rail_stations),
+    rows = nrow(metrosp::rail_stations),
     range = NULL,
     source = "GeoSampa"
   )
@@ -1078,37 +1162,37 @@ dataset_info <- list(
 
 download_card_configs <- list(
   list(
-    key = "passengers_entrance",
+    key = "line_entries_monthly",
     dl_ids = c("dl_ent_csv", "dl_ent_xlsx"),
     dl_labels = c("CSV", "Excel"),
     spatial = FALSE
   ),
   list(
-    key = "passengers_transported",
+    key = "line_transported_monthly",
     dl_ids = c("dl_trans_csv", "dl_trans_xlsx"),
     dl_labels = c("CSV", "Excel"),
     spatial = FALSE
   ),
   list(
-    key = "station_averages",
+    key = "station_transported_monthly",
     dl_ids = c("dl_staavg_csv", "dl_staavg_xlsx"),
     dl_labels = c("CSV", "Excel"),
     spatial = FALSE
   ),
   list(
-    key = "station_daily",
+    key = "station_entries_daily",
     dl_ids = c("dl_stadaily_csv", "dl_stadaily_xlsx"),
     dl_labels = c("CSV", "Excel"),
     spatial = FALSE
   ),
   list(
-    key = "lines_spatial",
+    key = "rail_lines",
     dl_ids = c("dl_lines_gpkg", "dl_lines_geojson"),
     dl_labels = c("GPKG", "GeoJSON"),
     spatial = TRUE
   ),
   list(
-    key = "stations_spatial",
+    key = "rail_stations",
     dl_ids = c("dl_stations_gpkg", "dl_stations_geojson"),
     dl_labels = c("GPKG", "GeoJSON"),
     spatial = TRUE
@@ -1136,7 +1220,7 @@ make_download_card <- function(cfg) {
         # titles are human-readable, so keep the package dataset name
         # visible for anyone loading metrosp directly
         tags$b("Dataset: "),
-        tags$code(paste0("metrosp::", sub("_spatial$", "", cfg$key))),
+        tags$code(paste0("metrosp::", cfg$key)),
         tags$br(),
         tags$b("Colunas: "),
         paste(info$cols, collapse = ", "),

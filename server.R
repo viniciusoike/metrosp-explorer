@@ -161,10 +161,7 @@ function(input, output, session) {
     df <- lines_data()
     validate(need(
       nrow(df) > 0,
-      paste(
-        "Sem dados para a seleção atual. Verifique o período escolhido.",
-        "As linhas 4 e 5 não têm dados de passageiros transportados."
-      )
+      "Sem dados para a seleção atual. Verifique o período escolhido."
     ))
     lns <- input$lines_line
     show_trend <- isTRUE(input$lines_trend) &&
@@ -236,11 +233,7 @@ function(input, output, session) {
       paste0(
         "Sem dados para: ",
         paste(line_labels[missing], collapse = ", "),
-        if (input$lines_metric == "transported") {
-          " (linhas 4 e 5 não têm dados de passageiros transportados)."
-        } else {
-          " no período selecionado."
-        }
+        " no período selecionado."
       )
     )
   })
@@ -265,10 +258,16 @@ function(input, output, session) {
   # station/year during the flush before the update lands. Valid selections
   # are preserved so switching lines (and bookmark restore) keeps them.
   observeEvent(input$sta_line, {
-    choices <- stations_by_line |>
-      filter(line_number == input$sta_line) |>
-      pull(station_name)
+    station_options <- stations_by_line |>
+      filter(line_number == input$sta_line)
+    choices <- setNames(
+      station_options$station_id,
+      station_options$station_name
+    )
     target <- pending_station() %||% input$sta_station
+    if (!isTRUE(target %in% choices) && isTRUE(target %in% names(choices))) {
+      target <- unname(choices[[target]])
+    }
     pending_station(NULL)
     freezeReactiveValue(input, "sta_station")
     updateSelectizeInput(
@@ -284,7 +283,7 @@ function(input, output, session) {
     years <- sta_daily_years |>
       filter(
         line_number == input$sta_line,
-        station_name == input$sta_station
+        station_id == input$sta_station
       ) |>
       pull(year)
     current <- input$sta_year
@@ -301,6 +300,18 @@ function(input, output, session) {
     )
   })
 
+  selected_station_name <- reactive({
+    req(input$sta_line, input$sta_station)
+    station <- stations_by_line |>
+      filter(
+        line_number == input$sta_line,
+        station_id == input$sta_station
+      ) |>
+      slice_head(n = 1)
+    req(nrow(station) == 1)
+    return(station$station_name)
+  })
+
   sta_monthly_data <- reactive({
     ln <- input$sta_line
     sta <- input$sta_station
@@ -308,7 +319,7 @@ function(input, output, session) {
 
     start <- period_start(input$sta_period)
     df <- sta_avg |>
-      filter(line_number == ln, station_name == sta, date >= start)
+      filter(line_number == ln, station_id == sta, date >= start)
     show_trend <- isTRUE(input$sta_trend) && HAS_TRENDSERIES
 
     if (!show_trend || sum(!is.na(df$value)) < 24L) {
@@ -320,7 +331,7 @@ function(input, output, session) {
         df,
         date_col = "date",
         value_col = "value",
-        group_cols = c("line_number", "station_name"),
+        group_cols = c("line_number", "station_id"),
         methods = "stl",
         params = list(robust = TRUE, s.window = 13),
         .quiet = TRUE
@@ -328,7 +339,7 @@ function(input, output, session) {
       error = function(e) {
         message(
           "STL trend failed for ",
-          sta,
+          selected_station_name(),
           " (L",
           ln,
           "): ",
@@ -351,7 +362,7 @@ function(input, output, session) {
     yr <- input$sta_year
     req(ln, sta, yr)
     sta_daily |>
-      filter(line_number == ln, station_name == sta, year == as.integer(yr)) |>
+      filter(line_number == ln, station_id == sta, year == as.integer(yr)) |>
       arrange(date)
   })
 
@@ -363,10 +374,9 @@ function(input, output, session) {
     mo_full <- sta_avg |>
       filter(
         line_number == input$sta_line,
-        station_name == input$sta_station,
+        station_id == input$sta_station,
         !is.na(value)
       )
-    req(nrow(mo_full) > 0)
     yr <- input$sta_year
     # Reuse the daily reactive (same line/station/year filter) instead of
     # re-filtering sta_daily, so the KPI and the daily chart can't diverge
@@ -388,7 +398,7 @@ function(input, output, session) {
 
     latest_mo <- mo_full |> slice_max(date, n = 1)
     mom_yoy <- NA_real_
-    mom_yoy_sub <- ""
+    mom_yoy_sub <- "sem série mensal transportada"
     if (nrow(latest_mo) == 1) {
       # same calendar month one year earlier (monthly dates, so exact match)
       prev_mo_date <- seq(latest_mo$date, by = "-1 year", length.out = 2)[2]
@@ -403,9 +413,17 @@ function(input, output, session) {
       )
     }
 
-    latest <- max(mo_full$date, na.rm = TRUE)
-    recent <- mo_full |> filter(date > latest - 365)
-    prior <- mo_full |> filter(date > latest - 730, date <= latest - 365)
+    latest <- if (nrow(mo_full) > 0) max(mo_full$date) else as.Date(NA)
+    recent <- if (!is.na(latest)) {
+      mo_full |> filter(date > latest - 365)
+    } else {
+      mo_full
+    }
+    prior <- if (!is.na(latest)) {
+      mo_full |> filter(date > latest - 730, date <= latest - 365)
+    } else {
+      mo_full
+    }
     yoy <- if (nrow(recent) >= 6 && nrow(prior) >= 6) {
       (mean(recent$value, na.rm = TRUE) / mean(prior$value, na.rm = TRUE) - 1) *
         100
@@ -420,21 +438,21 @@ function(input, output, session) {
       kpi_card(
         "Média dias úteis",
         wd_avg,
-        paste0("embarques/dia — ", yr_label)
+        paste0("entradas/dia — ", yr_label)
       ),
       kpi_card(
         "Média fins de semana",
         we_avg,
-        paste0("embarques/dia — ", yr_label)
+        paste0("entradas/dia — ", yr_label)
       ),
       kpi_card(
-        "Variação mensal (a/a)",
+        "Transportados — variação mensal (a/a)",
         fmt_pct(mom_yoy),
         mom_yoy_sub,
         tone = kpi_tone(mom_yoy)
       ),
       kpi_card(
-        "Variação anual",
+        "Transportados — variação anual",
         fmt_pct(yoy),
         "últimos 12m vs. anteriores",
         tone = kpi_tone(yoy)
@@ -453,7 +471,7 @@ function(input, output, session) {
   })
 
   output$sta_monthly_title <- renderText({
-    paste0(input$sta_station, " — Média dias úteis (mensal)")
+    paste0(selected_station_name(), " — Transportados/dia útil (mensal)")
   })
 
   output$sta_chart <- renderEcharts4r({
@@ -496,7 +514,7 @@ function(input, output, session) {
     } else {
       ""
     }
-    paste0(input$sta_station, " — Série diária (", yr, ")")
+    paste0(selected_station_name(), " — Entradas diárias (", yr, ")")
   })
 
   output$sta_daily_chart <- renderEcharts4r({
@@ -535,8 +553,8 @@ function(input, output, session) {
 
   output$dl_sta_csv <- downloadHandler(
     filename = function() {
-      sta_slug <- gsub(" ", "-", tolower(input$sta_station))
-      paste0("metrosp-estacao-", sta_slug, "-mensal.csv")
+      sta_slug <- gsub(" ", "-", tolower(selected_station_name()))
+      paste0("metrosp-estacao-", sta_slug, "-transportados-mensal.csv")
     },
     content = function(file) {
       readr::write_excel_csv2(sta_monthly_data(), file)
@@ -545,8 +563,14 @@ function(input, output, session) {
 
   output$dl_sta_daily_csv <- downloadHandler(
     filename = function() {
-      sta_slug <- gsub(" ", "-", tolower(input$sta_station))
-      paste0("metrosp-estacao-", sta_slug, "-diario-", input$sta_year, ".csv")
+      sta_slug <- gsub(" ", "-", tolower(selected_station_name()))
+      paste0(
+        "metrosp-estacao-",
+        sta_slug,
+        "-entradas-diarias-",
+        input$sta_year,
+        ".csv"
+      )
     },
     content = function(file) {
       readr::write_excel_csv2(sta_daily_data(), file)
@@ -599,7 +623,7 @@ function(input, output, session) {
       demanda = list(
         colors = c(map_seq_colors, map_na_color),
         labels = c(map_seq_labels, "sem dados"),
-        title = paste0("Embarques/dia útil (", year, ")")
+        title = paste0("Transportados/dia útil (", year, ")")
       ),
       vs2019 = list(
         colors = c(map_div_colors, map_na_color),
@@ -622,7 +646,7 @@ function(input, output, session) {
           paste0("Sem dados em ", year)
         } else {
           paste0(
-            "Média dias úteis em ",
+            "Transportados/dia útil em ",
             year,
             ": <b>",
             fmt_n(demand_year[i]),
@@ -639,7 +663,7 @@ function(input, output, session) {
         ))
       })
       year_rows <- map_metric_row(
-        paste0("Média em ", year),
+        paste0("Transportados em ", year),
         ifelse(
           is.na(demand_year),
           "sem dados",
@@ -662,7 +686,7 @@ function(input, output, session) {
       addCircleMarkers(
         data = df,
         group = "stations",
-        layerId = df$station_name,
+        layerId = df$station_id,
         radius = 6,
         weight = 1.5,
         color = stroke,
@@ -788,13 +812,13 @@ function(input, output, session) {
     parts <- strsplit(id, "||", fixed = TRUE)[[1]]
     req(length(parts) == 2)
     ln <- parts[1]
-    sta <- parts[2]
+    station_id <- parts[2]
 
     nav_select("main_nav", "estacoes")
     if (identical(input$sta_line, ln)) {
-      updateSelectizeInput(session, "sta_station", selected = sta)
+      updateSelectizeInput(session, "sta_station", selected = station_id)
     } else {
-      pending_station(sta)
+      pending_station(station_id)
       updateSelectInput(session, "sta_line", selected = ln)
     }
   })
@@ -820,36 +844,36 @@ function(input, output, session) {
   }
 
   output$dl_ent_csv <- make_csv_handler(
-    metrosp::passengers_entrance,
-    "passengers-entrance"
+    line_entries_monthly,
+    "line-entries-monthly"
   )
   output$dl_ent_xlsx <- make_xlsx_handler(
-    metrosp::passengers_entrance,
-    "passengers-entrance"
+    line_entries_monthly,
+    "line-entries-monthly"
   )
   output$dl_trans_csv <- make_csv_handler(
-    metrosp::passengers_transported,
-    "passengers-transported"
+    line_transported_monthly,
+    "line-transported-monthly"
   )
   output$dl_trans_xlsx <- make_xlsx_handler(
-    metrosp::passengers_transported,
-    "passengers-transported"
+    line_transported_monthly,
+    "line-transported-monthly"
   )
   output$dl_staavg_csv <- make_csv_handler(
-    metrosp::station_averages,
-    "station-averages"
+    station_transported_monthly,
+    "station-transported-monthly"
   )
   output$dl_staavg_xlsx <- make_xlsx_handler(
-    metrosp::station_averages,
-    "station-averages"
+    station_transported_monthly,
+    "station-transported-monthly"
   )
   output$dl_stadaily_csv <- make_csv_handler(
-    metrosp::station_daily,
-    "station-daily"
+    station_entries_daily,
+    "station-entries-daily"
   )
   output$dl_stadaily_xlsx <- make_xlsx_handler(
-    metrosp::station_daily,
-    "station-daily"
+    station_entries_daily,
+    "station-entries-daily"
   )
 
   make_spatial_handler <- function(sf_data, prefix, driver) {
@@ -874,20 +898,24 @@ function(input, output, session) {
     )
   }
 
-  output$dl_lines_gpkg <- make_spatial_handler(metrosp::lines, "lines", "GPKG")
+  output$dl_lines_gpkg <- make_spatial_handler(
+    metrosp::rail_lines,
+    "rail-lines",
+    "GPKG"
+  )
   output$dl_lines_geojson <- make_spatial_handler(
-    metrosp::lines,
-    "lines",
+    metrosp::rail_lines,
+    "rail-lines",
     "GeoJSON"
   )
   output$dl_stations_gpkg <- make_spatial_handler(
-    metrosp::stations,
-    "stations",
+    metrosp::rail_stations,
+    "rail-stations",
     "GPKG"
   )
   output$dl_stations_geojson <- make_spatial_handler(
-    metrosp::stations,
-    "stations",
+    metrosp::rail_stations,
+    "rail-stations",
     "GeoJSON"
   )
 }

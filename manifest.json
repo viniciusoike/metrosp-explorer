@@ -1894,7 +1894,7 @@
         "Package": "metrosp",
         "Type": "Package",
         "Title": "São Paulo Metro Passenger Demand Data",
-        "Version": "1.3.0",
+        "Version": "2.0.0",
         "Authors@R": "c(\n    person(\n      \"Vinicius\", \"Oike\",\n      email = \"viniciusoike@gmail.com\",\n      role = c(\"aut\", \"cre\", \"cph\"),\n      comment = c(ORCID = \"0009-0005-8015-9189\")\n    )\n  )",
         "Description": "Provides passenger demand data for the São Paulo metro\n        system, covering 2012 to 2026. Datasets include monthly\n        passenger entries and transported counts by line, average\n        weekday station entries, daily station entries, and spatial\n        geometries for metro and commuter train lines and stations. The\n        bundled datasets are a fixed snapshot, so analyses stay\n        reproducible and examples run offline; more recent data is\n        published separately as the upstream sources are updated.",
         "License": "MIT + file LICENSE",
@@ -3397,16 +3397,16 @@
       "checksum": "8c9a2286ab291e54c33e3e793348ce60"
     },
     "README.md": {
-      "checksum": "5d934ce790bcb2cd42a080367ea8a461"
+      "checksum": "54294b88b6662f563d7102caee60533b"
     },
     "global.R": {
-      "checksum": "747029b314a9d002e023cbf96863c510"
+      "checksum": "aece0d91d18dfd961f47a7c03d2d0d4b"
     },
     "renv.lock": {
-      "checksum": "f20734063cb65a32d5ec825c212c8bde"
+      "checksum": "b68e1911131b3f32aabe3a6424adf730"
     },
     "server.R": {
-      "checksum": "97fbdc53d784d534c635f0577df69197"
+      "checksum": "a80ca8e3b278a5281daad91c8b6461ff"
     },
     "static/images/screenshot_app.png": {
       "checksum": "e1c43d4af257bf08a93352aee53b7588"
@@ -3415,7 +3415,7 @@
       "checksum": "c9468133056798b742317184db88b508"
     },
     "ui.R": {
-      "checksum": "40b47471f676be557281a05a7bb8ffef"
+      "checksum": "850160171cc59c92d44f385127e936ee"
     },
     "www/ekio-badge-wordmark.svg": {
       "checksum": "133760a69ec8cb7d37a58f0d6c530fa7"

@@ -33,6 +33,18 @@ jobs:
 
       - uses: r-lib/actions/setup-renv@v2
 
+      - name: Check metrosp 2.0 data contract
+        shell: Rscript {0}
+        run: source("tests/data-contract.R")
+
+      - name: Check coherent demand fallback and station identity
+        shell: Rscript {0}
+        run: source("tests/app-data-boundary.R")
+
+      - name: Check download schemas
+        shell: Rscript {0}
+        run: source("tests/download-contract.R")
+
       - name: App startup smoke check
         shell: Rscript {0}
         run: |
