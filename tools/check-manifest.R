@@ -62,8 +62,17 @@ rns_pkgs <- gsub(
 # "pak" is excluded too: it appears only inside an install-advice string
 # (pak::pak("...")) in a message(), not as a runtime dependency.
 base_pkgs <- c(
-  "base", "utils", "stats", "methods", "grDevices", "graphics",
-  "datasets", "tools", "grid", "splines", "pak"
+  "base",
+  "utils",
+  "stats",
+  "methods",
+  "grDevices",
+  "graphics",
+  "datasets",
+  "tools",
+  "grid",
+  "splines",
+  "pak"
 )
 
 used_pkgs <- setdiff(unique(c(lib_pkgs, ns_pkgs, rns_pkgs)), base_pkgs)
@@ -87,8 +96,23 @@ if (length(problems) > 0) {
   )
 }
 
-cat(sprintf(
-  "manifest.json OK: %d files, %d packages cover all app files and code references.\n",
-  length(manifest_files),
-  length(manifest_pkgs)
-))
+# The schema migration requires the same metrosp source in both records.
+lockfile <- jsonlite::fromJSON("renv.lock", simplifyVector = FALSE)
+locked_metrosp <- lockfile$Packages$metrosp
+manifest_metrosp <- manifest$packages$metrosp$description
+installed_metrosp <- utils::packageDescription("metrosp")
+if (
+  is.null(locked_metrosp$RemoteSha) ||
+    !identical(locked_metrosp$Version, manifest_metrosp$Version) ||
+    !identical(locked_metrosp$RemoteSha, manifest_metrosp$RemoteSha) ||
+    !identical(locked_metrosp$Version, installed_metrosp$Version) ||
+    !identical(locked_metrosp$RemoteSha, installed_metrosp$RemoteSha)
+) {
+  cli::cli_abort(
+    "metrosp version and source revision must agree in the installed package, lockfile, and manifest."
+  )
+}
+
+cli::cli_alert_success(
+  "Manifest file/package coverage and metrosp source identity passed."
+)

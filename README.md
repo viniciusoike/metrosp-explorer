@@ -23,7 +23,8 @@ the data package.
 
 - **Line-level demand** — monthly entrance/transported series per line, with KPIs
   and an optional STL trend overlay.
-- **Per-station series** — monthly weekday averages and daily counts.
+- **Per-station series** — monthly weekday transported averages and daily
+  entries, kept as distinct measures.
 - **Interactive map** — metric views for yearly demand with an animated year
   slider, year-over-year change, recovery vs. 2019, and the network by line.
   Station popups show KPIs and link to each station's series.
@@ -42,8 +43,8 @@ shiny::runApp(".")
 
 [renv](https://rstudio.github.io/renv/) manages the dependencies. The lockfile
 (`renv.lock`) pins every package to an exact version and source, and it takes
-`metrosp` from [r-universe](https://viniciusoike.r-universe.dev/metrosp) because
-v1.1.1, which adds `station_inauguration`, is ahead of CRAN.
+`metrosp` 2.0.0 from
+[r-universe](https://viniciusoike.r-universe.dev/metrosp).
 
 After cloning, restore the project library.
 
@@ -81,9 +82,15 @@ renv::snapshot()
 
 ## Data source
 
-Demand data, line/station geometries, and inauguration dates come from the
-[metrosp](https://github.com/viniciusoike/metrosp) package
-([documentation](https://viniciusoike.github.io/metrosp/), r-universe v1.1.1).
+The app reads the four rolling demand tables through
+`metrosp::read_metro_demand()`. If any rolling table fails, it uses the four
+bundled snapshots together and identifies that source in the interface. Line
+and station geometries come from `metrosp::rail_lines` and
+`metrosp::rail_stations`.
+
+The [metrosp](https://github.com/viniciusoike/metrosp) package documents the
+datasets and original producers in its
+[data dictionary](https://viniciusoike.github.io/metrosp/articles/data-dictionary.html).
 The STL trend overlay uses
 [trendseries](https://github.com/viniciusoike/trendseries).
 
