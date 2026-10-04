@@ -69,7 +69,7 @@ if (!exists("%||%")) {
 metro_primary <- "#225A7E"
 metro_ink <- "#0D1B2A"
 metro_ink_soft <- "#3C3935"
-metro_page <- "#F2EDE2"
+metro_page <- "#FBFBF6" # ekioplot basic.offwhite
 metro_grid <- "#E6E0D4"
 
 # Formatting helpers ----
@@ -286,7 +286,7 @@ e_metro_defaults <- function(e, legend = TRUE, date_format = "month") {
         lineStyle = list(color = "#B4B0AB"),
         areaStyle = list(color = metro_grid)
       ),
-      handleStyle = list(color = "#FBFAF3", borderColor = metro_primary),
+      handleStyle = list(color = "#FBFBF6", borderColor = metro_primary),
       moveHandleStyle = list(color = metro_grid),
       selectedDataBackground = list(
         lineStyle = list(color = metro_primary),
