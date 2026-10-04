@@ -119,7 +119,7 @@ function(input, output, session) {
     }
 
     fc <- lines_forecast()
-    fc_growth <- if (is.null(fc)) NULL else forecast_growth(monthly, fc)
+    fc_growth <- if (!is.null(fc)) forecast_growth_interval(monthly, fc)
 
     div(
       class = if (is.null(fc)) "kpi-grid kpi-grid-4" else "kpi-grid kpi-grid-5",
@@ -149,9 +149,16 @@ function(input, output, session) {
       if (!is.null(fc)) {
         kpi_card(
           "Projeção",
-          fmt_pct(fc_growth),
-          "próximos 12m vs. últimos 12m",
-          tone = kpi_tone(fc_growth)
+          fmt_pct(fc_growth$point),
+          paste0(
+            "próximos 12m vs. últimos 12m · ",
+            FORECAST_LEVEL,
+            "%: ",
+            fmt_pct(fc_growth$lower),
+            " a ",
+            fmt_pct(fc_growth$upper)
+          ),
+          tone = kpi_tone(fc_growth$point)
         )
       }
     )
@@ -525,7 +532,7 @@ function(input, output, session) {
     yr_label <- if (!is.null(yr) && nzchar(yr)) yr else ""
 
     fc <- lines_forecast()
-    fc_growth <- if (is.null(fc)) NULL else forecast_growth(monthly, fc)
+    fc_growth <- if (!is.null(fc)) forecast_growth_interval(monthly, fc)
 
     div(
       class = if (is.null(fc)) "kpi-grid kpi-grid-4" else "kpi-grid kpi-grid-5",

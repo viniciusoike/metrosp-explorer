@@ -413,7 +413,12 @@ augment_monthly_stl <- function(dat) {
 # post-pandemic months so the 2020-21 collapse and recovery do not drive the
 # trend: STL + ETS, ETS, and ARIMA with calendar regressors. Rolling-origin
 # backtests favored the ensemble over each member. Back-transformed point
-# forecasts are medians, and the interval averages the members' bounds.
+# forecasts are medians.
+#
+# Intervals are empirical: tools/forecast-backtest.R collects the ensemble's
+# log errors by horizon across all lines, standardizes each by its series'
+# residual scale, and stores the pooled quantiles in
+# data/forecast-quantiles.csv.
 
 FORECAST_START <- as.Date("2022-01-01")
 FORECAST_H <- 12L
@@ -435,10 +440,11 @@ calendar_xreg <- function(dates) {
   return(as.matrix(calendar_monthly[rows, c("bdays", "sats")]))
 }
 
-# One line's monthly series in, an h-month forecast out. Returns NULL when
-# the fit window is too short or has gaps, or the horizon outruns the
-# calendar.
-forecast_line <- function(df, h = FORECAST_H, start = FORECAST_START) {
+# Ensemble point forecast on the log scale. Returns NULL when the fit window
+# is too short or has gaps, or the horizon outruns the calendar. `scale` is
+# the in-sample residual SD of the STL + ETS member, used to standardize
+# errors across lines.
+forecast_point <- function(df, h = FORECAST_H, start = FORECAST_START) {
   fit_df <- df |>
     filter(date >= start, !is.na(value), value > 0) |>
     arrange(date)
@@ -461,25 +467,63 @@ forecast_line <- function(df, h = FORECAST_H, start = FORECAST_START) {
     frequency = 12
   )
 
+  stl_ets <- forecast::stlf(y, h = h, method = "ets", robust = TRUE)
   members <- list(
-    forecast::stlf(y, h = h, method = "ets", robust = TRUE, level = FORECAST_LEVEL),
-    forecast::forecast(forecast::ets(y), h = h, level = FORECAST_LEVEL),
+    stl_ets$mean,
+    forecast::forecast(forecast::ets(y), h = h)$mean,
     forecast::forecast(
       forecast::auto.arima(y, xreg = calendar_xreg(fit_df$date)),
-      xreg = calendar_xreg(dates),
-      level = FORECAST_LEVEL
-    )
+      xreg = calendar_xreg(dates)
+    )$mean
   )
-  avg <- function(part) {
-    return(rowMeans(sapply(members, function(m) as.numeric(m[[part]]))))
-  }
 
-  return(tibble::tibble(
+  return(list(
     date = dates,
-    fc_mean = exp(avg("mean")),
-    fc_lower = exp(avg("lower")),
-    fc_upper = exp(avg("upper"))
+    log_mean = rowMeans(sapply(members, as.numeric)),
+    scale = stats::sd(stats::residuals(stl_ets), na.rm = TRUE)
   ))
+}
+
+# Without the quantile file (e.g. before the first backtest run) the app
+# shows no forecast
+read_forecast_quantiles <- function(path = "data/forecast-quantiles.csv") {
+  if (!file.exists(path)) {
+    cli::cli_warn(c(
+      "Forecast quantiles not found; forecasts are disabled.",
+      "i" = "Run {.file tools/forecast-backtest.R} to create {.file {path}}."
+    ))
+    return(list(month = NULL, sum12 = NULL))
+  }
+  q <- readr::read_csv(path, show_col_types = FALSE)
+  return(list(
+    month = q |> filter(target == "month") |> arrange(h),
+    sum12 = q |> filter(target == "sum12")
+  ))
+}
+
+forecast_quantile_tables <- read_forecast_quantiles()
+forecast_quantiles <- forecast_quantile_tables$month
+forecast_sum_quantiles <- forecast_quantile_tables$sum12
+
+# One line's monthly series in, an h-month forecast with its interval out
+forecast_line <- function(df, h = FORECAST_H, start = FORECAST_START) {
+  if (is.null(forecast_quantiles)) {
+    return(NULL)
+  }
+  pt <- forecast_point(df, h = h, start = start)
+  if (is.null(pt)) {
+    return(NULL)
+  }
+  q <- forecast_quantiles[match(seq_len(h), forecast_quantiles$h), ]
+
+  out <- tibble::tibble(
+    date = pt$date,
+    fc_mean = exp(pt$log_mean),
+    fc_lower = exp(pt$log_mean + q$q_lower * pt$scale),
+    fc_upper = exp(pt$log_mean + q$q_upper * pt$scale)
+  )
+  attr(out, "scale") <- pt$scale
+  return(out)
 }
 
 # Percent change of the next 12 forecast months over the last 12 observed
@@ -489,6 +533,15 @@ forecast_growth <- function(observed, fc) {
     slice_max(date, n = 12)
   next_12 <- fc |> slice_min(date, n = 12)
   return((sum(next_12$fc_mean) / sum(last_12$value) - 1) * 100)
+}
+
+# The same growth with an interval from the 12-month-sum error quantiles
+forecast_growth_interval <- function(observed, fc) {
+  point <- forecast_growth(observed, fc)
+  shift <- c(forecast_sum_quantiles$q_lower, forecast_sum_quantiles$q_upper) *
+    attr(fc, "scale")
+  bounds <- ((1 + point / 100) * exp(shift) - 1) * 100
+  return(list(point = point, lower = bounds[1], upper = bounds[2]))
 }
 
 # Pre-build data ----
@@ -1060,7 +1113,7 @@ forecast_note <- paste0(
   fmt_month_pt(FORECAST_START),
   ". A faixa indica o intervalo de ",
   FORECAST_LEVEL,
-  "%."
+  "%, calibrado pelos erros de projeções passadas."
 )
 
 line_coverage <- bind_rows(

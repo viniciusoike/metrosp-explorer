@@ -72,6 +72,34 @@ expect_true(
   "Series with missing months in the fit window must return NULL."
 )
 
+## Intervals come from the backtest error quantiles ----
+q <- forecast_quantiles
+expect_true(
+  is.data.frame(q) &&
+    identical(as.integer(q$h), seq_len(FORECAST_H)) &&
+    all(q$q_lower < q$q_upper),
+  "forecast_quantiles must hold a lower and upper quantile for each step."
+)
+scale <- attr(fc, "scale")
+expect_true(
+  is.numeric(scale) && length(scale) == 1 && scale > 0,
+  "forecast_line() must attach a positive error scale."
+)
+expect_true(
+  isTRUE(all.equal(log(fc$fc_upper / fc$fc_mean) / scale, q$q_upper)) &&
+    isTRUE(all.equal(log(fc$fc_lower / fc$fc_mean) / scale, q$q_lower)),
+  "Interval bounds must be the point forecast scaled by the error quantiles."
+)
+
+## The 12-month KPI gets its own interval ----
+growth <- forecast_growth_interval(line_1, fc)
+expect_true(
+  all(c("point", "lower", "upper") %in% names(growth)) &&
+    growth$lower < growth$point &&
+    growth$point < growth$upper,
+  "forecast_growth_interval() must bracket the point growth."
+)
+
 ## Forecast growth compares the next 12 months with the last 12 ----
 toy_obs <- tibble::tibble(
   date = seq(as.Date("2024-01-01"), by = "month", length.out = 24),
