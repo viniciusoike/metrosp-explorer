@@ -1888,15 +1888,15 @@
       }
     },
     "metrosp": {
-      "Source": "CRAN",
-      "Repository": "https://cloud.r-project.org",
+      "Source": "github",
+      "Repository": null,
       "description": {
         "Package": "metrosp",
         "Type": "Package",
         "Title": "São Paulo Metro Passenger Demand Data",
         "Version": "2.0.0",
         "Authors@R": "c(\n    person(\n      \"Vinicius\", \"Oike\",\n      email = \"viniciusoike@gmail.com\",\n      role = c(\"aut\", \"cre\", \"cph\"),\n      comment = c(ORCID = \"0009-0005-8015-9189\")\n    )\n  )",
-        "Description": "Provides passenger demand data for the São Paulo metro\n        system, covering 2012 to 2026. Datasets include monthly\n        passenger entries and transported counts by line, average\n        weekday station entries, daily station entries, and spatial\n        geometries for metro and commuter train lines and stations. The\n        bundled datasets are a fixed snapshot, so analyses stay\n        reproducible and examples run offline. More recent data is\n        published to 'GitHub' releases as the upstream sources are\n        updated, and read_metro_demand() downloads, caches, and reads\n        it, optionally pinned to a dated monthly batch.",
+        "Description": "Provides passenger demand data for the São Paulo metro system,\n    covering 2012 to 2026. Datasets include monthly passenger entries and\n    transported counts by line, average weekday station entries, daily\n    station entries, and spatial geometries for metro and commuter train\n    lines and stations. The bundled datasets are a fixed snapshot, so\n    analyses stay reproducible and examples run offline. More recent data\n    is published to 'GitHub' releases as the upstream sources are updated,\n    and read_metro_demand() downloads, caches, and reads it, optionally\n    pinned to a dated monthly batch.",
         "License": "MIT + file LICENSE",
         "Encoding": "UTF-8",
         "Language": "en-US",
@@ -1910,16 +1910,21 @@
         "URL": "https://github.com/viniciusoike/metrosp,\nhttps://viniciusoike.github.io/metrosp/",
         "BugReports": "https://github.com/viniciusoike/metrosp/issues",
         "VignetteBuilder": "quarto",
-        "Repository": "https://viniciusoike.r-universe.dev",
-        "Date/Publication": "2026-10-02 23:40:38 UTC",
-        "RemoteUrl": "https://github.com/viniciusoike/metrosp",
-        "RemoteRef": "HEAD",
-        "RemoteSha": "95d321ef0c2e9a42929bc82d09ad644b54201c8f",
+        "RemoteType": "github",
+        "RemoteHost": "api.github.com",
+        "RemoteRepo": "metrosp",
+        "RemoteUsername": "viniciusoike",
+        "RemoteRef": "1bf885961331e469e20ab0c24c28a1535adb43c4",
+        "RemoteSha": "1bf885961331e469e20ab0c24c28a1535adb43c4",
+        "GithubRepo": "metrosp",
+        "GithubUsername": "viniciusoike",
+        "GithubRef": "1bf885961331e469e20ab0c24c28a1535adb43c4",
+        "GithubSHA1": "1bf885961331e469e20ab0c24c28a1535adb43c4",
         "NeedsCompilation": "no",
-        "Packaged": "2026-10-03 02:14:08 UTC; root",
+        "Packaged": "2026-10-04 13:28:28 UTC; viniciusreginatto",
         "Author": "Vinicius Oike [aut, cre, cph] (ORCID:\n    <https://orcid.org/0009-0005-8015-9189>)",
         "Maintainer": "Vinicius Oike <viniciusoike@gmail.com>",
-        "Built": "R 4.5.3; ; 2026-10-03 02:16:25 UTC; unix"
+        "Built": "R 4.5.1; ; 2026-10-04 13:28:28 UTC; unix"
       }
     },
     "mime": {
@@ -3397,16 +3402,16 @@
       "checksum": "8c9a2286ab291e54c33e3e793348ce60"
     },
     "README.md": {
-      "checksum": "54294b88b6662f563d7102caee60533b"
+      "checksum": "4865d3e1e47830fccbc33de1f542bfb7"
     },
     "global.R": {
-      "checksum": "2408b8fd90779ca8169507997f36e6f6"
+      "checksum": "e52003cac9372a4b83e70e9d37a4cac1"
     },
     "renv.lock": {
-      "checksum": "9db75f1481ac5927ee6107ead04965e5"
+      "checksum": "68748cee6950b2af38355790d5453f9d"
     },
     "server.R": {
-      "checksum": "7438d6c81a2cbcc122574e47b3f7542f"
+      "checksum": "07e1ac181d7056c1ee95695a63b95a7d"
     },
     "static/images/screenshot_app.png": {
       "checksum": "e1c43d4af257bf08a93352aee53b7588"
