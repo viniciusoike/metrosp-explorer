@@ -31,6 +31,10 @@ the data package.
 - **Dataset downloads** — the package datasets verbatim, in CSV / Excel / GPKG /
   GeoJSON.
 
+STL uses the full available history within each uninterrupted monthly segment,
+then applies the selected display period. Missing months and values remain
+missing; segments with at most 24 observations have no trend estimate.
+
 ## Run locally
 
 Start the app from the repository root.
@@ -42,9 +46,9 @@ shiny::runApp(".")
 ## Dependencies
 
 [renv](https://rstudio.github.io/renv/) manages the dependencies. The lockfile
-(`renv.lock`) pins every package to an exact version and source, and it takes
-`metrosp` 2.0.0 from
-[r-universe](https://viniciusoike.r-universe.dev/metrosp).
+(`renv.lock`) pins every package to an exact version and source, and it pins
+`metrosp` 2.0.0 to [GitHub commit `1bf8859`](https://github.com/viniciusoike/metrosp/commit/1bf885961331e469e20ab0c24c28a1535adb43c4),
+which fixes archived station-name lookup when `sf` is loaded.
 
 After cloning, restore the project library.
 
@@ -63,7 +67,7 @@ deploys as a unit.
 
 [Connect Cloud](https://connect.posit.cloud/) publishes straight from this public
 GitHub repo. When it detects `renv.lock`, it calls `renv::restore()` to install
-the packages, including `metrosp` from r-universe. `manifest.json` stays tracked
+the packages, including the pinned GitHub revision of `metrosp`. `manifest.json` stays tracked
 for app-type metadata, and no `rsconnect` push is required.
 
 ### Classic Posit Connect / shinyapps.io

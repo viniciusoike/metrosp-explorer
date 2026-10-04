@@ -45,6 +45,10 @@ jobs:
         shell: Rscript {0}
         run: source("tests/station-reactivity.R")
 
+      - name: Check STL display windows
+        shell: Rscript {0}
+        run: source("tests/trend-window.R")
+
       - name: Check download schemas
         shell: Rscript {0}
         run: source("tests/download-contract.R")

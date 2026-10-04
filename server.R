@@ -30,30 +30,24 @@ function(input, output, session) {
 
     start <- period_start(input$lines_period)
     base <- if (input$lines_metric == "entrance") ent else trans
-    df <- base |> filter(line_number %in% lns, date >= start)
+    df <- base |> filter(line_number %in% lns)
 
     show_trend <- isTRUE(input$lines_trend) &&
       length(lns) == 1 &&
       HAS_TRENDSERIES
     if (!show_trend || nrow(df) == 0) {
-      return(df)
+      return(df |> filter(date >= start))
     }
 
-    tryCatch(
-      trendseries::augment_trends(
-        df,
-        date_col = "date",
-        value_col = "value",
-        group_cols = "line_number",
-        methods = "stl",
-        params = list(robust = TRUE, s.window = 13),
-        .quiet = TRUE
-      ),
+    # Fit on the full history so the display window does not change the trend.
+    df <- tryCatch(
+      augment_monthly_stl(df),
       error = function(e) {
         message("STL trend failed for line ", lns, ": ", conditionMessage(e))
         df |> mutate(trend_stl = NA_real_)
       }
     )
+    return(df |> filter(date >= start))
   }) |>
     bindCache(
       input$lines_line,
@@ -330,23 +324,16 @@ function(input, output, session) {
 
     start <- period_start(input$sta_period)
     df <- sta_avg |>
-      filter(line_number == ln, station_id == sta, date >= start)
+      filter(line_number == ln, station_id == sta)
     show_trend <- isTRUE(input$sta_trend) && HAS_TRENDSERIES
 
     if (!show_trend || sum(!is.na(df$value)) < 24L) {
-      return(df)
+      return(df |> filter(date >= start))
     }
 
-    tryCatch(
-      trendseries::augment_trends(
-        df,
-        date_col = "date",
-        value_col = "value",
-        group_cols = c("line_number", "station_id"),
-        methods = "stl",
-        params = list(robust = TRUE, s.window = 13),
-        .quiet = TRUE
-      ),
+    # Fit on the full history before selecting the visible months.
+    df <- tryCatch(
+      augment_monthly_stl(df),
       error = function(e) {
         message(
           "STL trend failed for ",
@@ -359,6 +346,7 @@ function(input, output, session) {
         df |> mutate(trend_stl = NA_real_)
       }
     )
+    return(df |> filter(date >= start))
   }) |>
     bindCache(
       input$sta_line,

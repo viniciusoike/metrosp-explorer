@@ -377,6 +377,37 @@ if (!HAS_TRENDSERIES) {
   )
 }
 
+# Fit one monthly series without filling official gaps or missing values.
+augment_monthly_stl <- function(dat) {
+  dat$trend_stl <- NA_real_
+  rows <- which(is.finite(dat$value))
+  rows <- rows[order(dat$date[rows])]
+  if (length(rows) == 0L) {
+    return(dat)
+  }
+  month <- as.integer(format(dat$date[rows], "%Y")) *
+    12L +
+    as.integer(format(dat$date[rows], "%m"))
+  segments <- split(rows, cumsum(c(TRUE, diff(month) != 1L)))
+  for (segment in segments) {
+    # Monthly STL requires more than two complete annual cycles.
+    if (length(segment) <= 24L) {
+      next
+    }
+    fitted <- trendseries::augment_trends(
+      dat[segment, c("date", "value")],
+      date_col = "date",
+      value_col = "value",
+      frequency = 12,
+      methods = "stl",
+      params = list(robust = TRUE, s.window = 13),
+      .quiet = TRUE
+    )
+    dat$trend_stl[segment] <- fitted$trend_stl
+  }
+  return(dat)
+}
+
 # Pre-build data ----
 
 DEMAND_DATASETS <- c(
