@@ -408,6 +408,89 @@ augment_monthly_stl <- function(dat) {
   return(dat)
 }
 
+# Line forecasts ----
+# Equal-weight ensemble of three models on log demand, fitted only on
+# post-pandemic months so the 2020-21 collapse and recovery do not drive the
+# trend: STL + ETS, ETS, and ARIMA with calendar regressors. Rolling-origin
+# backtests favored the ensemble over each member. Back-transformed point
+# forecasts are medians, and the interval averages the members' bounds.
+
+FORECAST_START <- as.Date("2022-01-01")
+FORECAST_H <- 12L
+FORECAST_MIN_OBS <- 36L
+FORECAST_LEVEL <- 90
+
+# Business days and non-holiday Saturdays per month (São Paulo calendar)
+calendar_monthly <- metrosp::calendar_spo |>
+  mutate(date = as.Date(format(date, "%Y-%m-01"))) |>
+  group_by(date) |>
+  summarise(
+    bdays = sum(is_business_day),
+    sats = sum(weekday == 7 & !is_holiday),
+    .groups = "drop"
+  )
+
+calendar_xreg <- function(dates) {
+  rows <- match(dates, calendar_monthly$date)
+  return(as.matrix(calendar_monthly[rows, c("bdays", "sats")]))
+}
+
+# One line's monthly series in, an h-month forecast out. Returns NULL when
+# the fit window is too short or has gaps, or the horizon outruns the
+# calendar.
+forecast_line <- function(df, h = FORECAST_H, start = FORECAST_START) {
+  fit_df <- df |>
+    filter(date >= start, !is.na(value), value > 0) |>
+    arrange(date)
+  if (nrow(fit_df) < FORECAST_MIN_OBS) {
+    return(NULL)
+  }
+  months <- seq(min(fit_df$date), max(fit_df$date), by = "month")
+  if (length(months) != nrow(fit_df)) {
+    return(NULL)
+  }
+  dates <- seq(max(fit_df$date), by = "month", length.out = h + 1)[-1]
+  if (!all(dates %in% calendar_monthly$date)) {
+    return(NULL)
+  }
+
+  first <- as.POSIXlt(fit_df$date[1])
+  y <- stats::ts(
+    log(fit_df$value),
+    start = c(first$year + 1900, first$mon + 1),
+    frequency = 12
+  )
+
+  members <- list(
+    forecast::stlf(y, h = h, method = "ets", robust = TRUE, level = FORECAST_LEVEL),
+    forecast::forecast(forecast::ets(y), h = h, level = FORECAST_LEVEL),
+    forecast::forecast(
+      forecast::auto.arima(y, xreg = calendar_xreg(fit_df$date)),
+      xreg = calendar_xreg(dates),
+      level = FORECAST_LEVEL
+    )
+  )
+  avg <- function(part) {
+    return(rowMeans(sapply(members, function(m) as.numeric(m[[part]]))))
+  }
+
+  return(tibble::tibble(
+    date = dates,
+    fc_mean = exp(avg("mean")),
+    fc_lower = exp(avg("lower")),
+    fc_upper = exp(avg("upper"))
+  ))
+}
+
+# Percent change of the next 12 forecast months over the last 12 observed
+forecast_growth <- function(observed, fc) {
+  last_12 <- observed |>
+    filter(!is.na(value)) |>
+    slice_max(date, n = 12)
+  next_12 <- fc |> slice_min(date, n = 12)
+  return((sum(next_12$fc_mean) / sum(last_12$value) - 1) * 100)
+}
+
 # Pre-build data ----
 
 DEMAND_DATASETS <- c(
@@ -971,6 +1054,15 @@ trend_note <- if (HAS_TRENDSERIES) {
   "Instale o pacote trendseries para habilitar tendência STL."
 }
 
+forecast_note <- paste0(
+  "Projeção: média de três modelos (STL + ETS, ETS e ARIMA com dias úteis), ",
+  "ajustados desde ",
+  fmt_month_pt(FORECAST_START),
+  ". A faixa indica o intervalo de ",
+  FORECAST_LEVEL,
+  "%."
+)
+
 line_coverage <- bind_rows(
   entrance = ent,
   transported = trans,
@@ -1032,7 +1124,13 @@ info_box <- function(title, definition, rows, notes = NULL) {
   ))
 }
 
-lines_info_box <- function(lines, metric, start, show_trend) {
+lines_info_box <- function(
+  lines,
+  metric,
+  start,
+  show_trend,
+  show_forecast = FALSE
+) {
   info <- metric_info[[metric]]
   coverage <- line_coverage[line_coverage$metric == metric, ]
 
@@ -1064,7 +1162,8 @@ lines_info_box <- function(lines, metric, start, show_trend) {
     ) {
       "Linha 5: série termina em ago/2018, quando passou à ViaMobilidade."
     },
-    if (show_trend) trend_note
+    if (show_trend) trend_note,
+    if (show_forecast) forecast_note
   )
 
   return(info_box(info$label, info$definition, rows, notes))
