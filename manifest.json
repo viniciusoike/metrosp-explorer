@@ -3392,12 +3392,6 @@
     }
   },
   "files": {
-    ".posit/publish/deployments/deployment-HBAM.toml": {
-      "checksum": "a3c936ae0f78e268d767b2f0e860ccba"
-    },
-    ".posit/publish/metrosp-explorer-MA08.toml": {
-      "checksum": "3110670ab7114b6b578095d1a65df444"
-    },
     "LICENSE": {
       "checksum": "8c9a2286ab291e54c33e3e793348ce60"
     },
@@ -3405,7 +3399,7 @@
       "checksum": "4865d3e1e47830fccbc33de1f542bfb7"
     },
     "global.R": {
-      "checksum": "e52003cac9372a4b83e70e9d37a4cac1"
+      "checksum": "86643bbf710d0e54b1ed4b8577f5e6b5"
     },
     "renv.lock": {
       "checksum": "68748cee6950b2af38355790d5453f9d"
@@ -3429,7 +3423,7 @@
       "checksum": "0168943dab4074dead73a75942cd27fb"
     },
     "www/styles.css": {
-      "checksum": "7a130740e3d79b32af53a21682e9ac62"
+      "checksum": "2fda65e932dfd76faa14e711d2cc1de7"
     }
   },
   "users": null
