@@ -183,6 +183,14 @@ function(request) {
               )
             )
           },
+          conditionalPanel(
+            condition = "input.lines_line !== null && input.lines_line.length === 1",
+            checkboxInput(
+              "lines_forecast",
+              "Mostrar projeção (12 meses)",
+              value = FALSE
+            )
+          ),
           uiOutput("lines_info")
         ),
 

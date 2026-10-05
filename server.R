@@ -56,6 +56,27 @@ function(input, output, session) {
       input$lines_trend
     )
 
+  # Fitted on the full series, independent of the display window
+  lines_forecast <- reactive({
+    lns <- input$lines_line
+    if (!isTRUE(input$lines_forecast) || length(lns) != 1) {
+      return(NULL)
+    }
+    base <- if (input$lines_metric == "entrance") ent else trans
+    tryCatch(
+      forecast_line(base |> filter(line_number == lns)),
+      error = function(e) {
+        message("Forecast failed for line ", lns, ": ", conditionMessage(e))
+        NULL
+      }
+    )
+  }) |>
+    bindCache(
+      input$lines_line,
+      input$lines_metric,
+      input$lines_forecast
+    )
+
   output$lines_kpis <- renderUI({
     lns <- input$lines_line
     req(length(lns) > 0)
@@ -97,8 +118,11 @@ function(input, output, session) {
       NA_real_
     }
 
+    fc <- lines_forecast()
+    fc_growth <- if (!is.null(fc)) forecast_growth_interval(monthly, fc)
+
     div(
-      class = "kpi-grid kpi-grid-4",
+      class = if (is.null(fc)) "kpi-grid kpi-grid-4" else "kpi-grid kpi-grid-5",
       kpi_card("Último mês", fmt_n(latest$value), fmt_month_pt(latest$date)),
       kpi_card(
         "Variação mensal (a/a)",
@@ -121,7 +145,22 @@ function(input, output, session) {
         fmt_pct(vs2019),
         "últimos 12m vs. média de 2019",
         tone = kpi_tone(vs2019)
-      )
+      ),
+      if (!is.null(fc)) {
+        kpi_card(
+          "Projeção",
+          fmt_pct(fc_growth$point),
+          paste0(
+            "próximos 12m vs. últimos 12m · ",
+            FORECAST_LEVEL,
+            "%: ",
+            fmt_pct(fc_growth$lower),
+            " a ",
+            fmt_pct(fc_growth$upper)
+          ),
+          tone = kpi_tone(fc_growth$point)
+        )
+      }
     )
   })
 
@@ -133,7 +172,8 @@ function(input, output, session) {
       lns,
       input$lines_metric,
       period_start(input$lines_period),
-      show_trend
+      show_trend,
+      show_forecast = !is.null(lines_forecast())
     )
   })
 
@@ -186,6 +226,37 @@ function(input, output, session) {
             itemStyle = list(color = col)
           )
       }
+
+      fc <- lines_forecast()
+      if (!is.null(fc)) {
+        # anchor the forecast on the last observation so the lines connect
+        last_obs <- df |> filter(!is.na(value)) |> slice_max(date, n = 1)
+        fc <- bind_rows(
+          tibble::tibble(
+            date = last_obs$date,
+            fc_mean = last_obs$value,
+            fc_lower = last_obs$value,
+            fc_upper = last_obs$value
+          ),
+          fc
+        )
+        e <- e |>
+          e_data(fc, date) |>
+          e_band2(
+            fc_lower,
+            fc_upper,
+            name = paste0("Intervalo de ", FORECAST_LEVEL, "%"),
+            itemStyle = list(color = col, opacity = 0.15, borderWidth = 0)
+          ) |>
+          e_line(
+            fc_mean,
+            name = "Projeção",
+            symbol = "none",
+            smooth = FALSE,
+            lineStyle = list(width = 2.2, color = col, type = "dashed"),
+            itemStyle = list(color = col)
+          )
+      }
     } else {
       df <- df |>
         mutate(
@@ -211,12 +282,32 @@ function(input, output, session) {
     }
 
     # a single observed series is already named by the card header
-    e |> e_metro_defaults(legend = length(lns) > 1 || show_trend)
+    show_forecast <- length(lns) == 1 && !is.null(lines_forecast())
+    e |>
+      e_metro_defaults(
+        legend = length(lns) > 1 || show_trend || show_forecast
+      )
   })
 
   output$lines_note <- renderUI({
     df <- lines_data()
     lns <- input$lines_line
+    fc_missing <- isTRUE(input$lines_forecast) &&
+      length(lns) == 1 &&
+      is.null(lines_forecast())
+    if (fc_missing) {
+      return(div(
+        class = "small text-muted px-3 pb-2",
+        bs_icon("exclamation-triangle", class = "me-1"),
+        paste0(
+          "Projeção indisponível: a série precisa de ",
+          FORECAST_MIN_OBS,
+          " meses contínuos desde ",
+          fmt_month_pt(FORECAST_START),
+          "."
+        )
+      ))
+    }
     missing <- setdiff(lns, unique(df$line_number))
     if (nrow(df) == 0 || length(missing) == 0) {
       return(NULL)
@@ -238,7 +329,12 @@ function(input, output, session) {
       paste0("metrosp-linhas-", lns, "-", input$lines_metric, ".csv")
     },
     content = function(file) {
-      readr::write_excel_csv2(lines_data(), file)
+      out <- lines_data()
+      fc <- lines_forecast()
+      if (!is.null(fc)) {
+        out <- bind_rows(out, fc |> mutate(line_number = input$lines_line))
+      }
+      readr::write_excel_csv2(out, file)
     }
   )
 
@@ -435,8 +531,11 @@ function(input, output, session) {
 
     yr_label <- if (!is.null(yr) && nzchar(yr)) yr else ""
 
+    fc <- lines_forecast()
+    fc_growth <- if (!is.null(fc)) forecast_growth_interval(monthly, fc)
+
     div(
-      class = "kpi-grid kpi-grid-4",
+      class = if (is.null(fc)) "kpi-grid kpi-grid-4" else "kpi-grid kpi-grid-5",
       kpi_card(
         "Média dias úteis",
         wd_avg,
