@@ -4181,7 +4181,7 @@
       "checksum": "9e6a703bb685d9e64ffdf28e0615aca1"
     },
     "global.R": {
-      "checksum": "ff7f6da0489a47b464841a9cdee60d59"
+      "checksum": "67abd9c8de872465d19da53e808a6c36"
     },
     "LICENSE": {
       "checksum": "8c9a2286ab291e54c33e3e793348ce60"
@@ -4193,7 +4193,7 @@
       "checksum": "9359bf7543d8f1371cb8f9db951402ed"
     },
     "server.R": {
-      "checksum": "e0609f9debdf258afaaf4eaebdf20305"
+      "checksum": "a149ec17d78ea43b17f942ad0fd285ca"
     },
     "static/images/screenshot_app.png": {
       "checksum": "e1c43d4af257bf08a93352aee53b7588"
@@ -4208,7 +4208,7 @@
       "checksum": "5f4d109902c83d574bad166a2d9e7554"
     },
     "tests/forecast.R": {
-      "checksum": "205c954232aa66fa3a1d33872fd3bebb"
+      "checksum": "389250d82225c1980b8db189314e6c18"
     },
     "tests/station-reactivity.R": {
       "checksum": "2a5dc4385cba64eed19e22a124b89770"
@@ -4223,7 +4223,7 @@
       "checksum": "4657a9ed2e97230abc00de220bea6141"
     },
     "ui.R": {
-      "checksum": "03a240f16217475aa15444565b17a5d2"
+      "checksum": "24f2227ead68988a85fede78f5732400"
     },
     "www/ekio-badge-wordmark.svg": {
       "checksum": "133760a69ec8cb7d37a58f0d6c530fa7"

@@ -236,6 +236,11 @@ js_tooltip_pt_br <- function(date_format = c("month", "day")) {
     ),
     "  params.forEach(function(p) {",
     "    var v = Array.isArray(p.value) ? p.value[1] : p.value;",
+    # band series (e_band2) arrive as [date, lower, upper]; the forecast
+    # band's anchor on the last observation has lower == upper, so skip it
+    "    var band = Array.isArray(p.value) && p.value.length >= 3;",
+    "    if (band && Number(p.value[1]) === Number(p.value[2])) return;",
+    "    var label = band ? fmtN(p.value[1]) + ' \\u2013 ' + fmtN(p.value[2]) : fmtN(v);",
     "    t += '<div style=\"display:flex;align-items:center;gap:6px;\">';",
     "    t += '<span style=\"display:inline-block;width:8px;height:8px;border-radius:50%;background:' + p.color + '\"></span>';",
     paste0(
@@ -246,7 +251,7 @@ js_tooltip_pt_br <- function(date_format = c("month", "day")) {
     paste0(
       "    t += '<span style=\"margin-left:auto;font-weight:600;color:",
       metro_ink,
-      "\">' + fmtN(v) + '</span>';"
+      "\">' + label + '</span>';"
     ),
     "    t += '</div>';",
     "  });",

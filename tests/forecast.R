@@ -114,4 +114,60 @@ expect_true(
   "forecast_growth() must return the percent change of the 12-month sums."
 )
 
+## The band tooltip shows both interval bounds ----
+# e_band2() ships each point as [date, lower, upper]; the tooltip must quote
+# the range, not just the lower bound
+tooltip_js <- paste(js_tooltip_pt_br("month"), collapse = "\n")
+expect_true(
+  grepl("p.value.length >= 3", tooltip_js, fixed = TRUE) &&
+    grepl("fmtN(p.value[2])", tooltip_js, fixed = TRUE),
+  "The tooltip must show the lower and upper bounds of band series."
+)
+
+## A line forecast does not break the station tab ----
+server <- source("server.R", encoding = "UTF-8")$value
+shiny::testServer(server, {
+  session$setInputs(
+    lines_line = "1",
+    lines_metric = "entrance",
+    lines_period = "inicio",
+    lines_forecast = TRUE,
+    sta_line = "1",
+    sta_station = stations_by_line$station_id[
+      stations_by_line$line_number == "1"
+    ][[1]]
+  )
+  # the station observer freezes sta_year until the client sends one
+  session$setInputs(sta_year = "")
+  expect_true(
+    !is.null(lines_forecast()),
+    "The test needs an active line forecast."
+  )
+  kpis <- tryCatch(output$sta_kpis, error = identity)
+  expect_true(
+    !inherits(kpis, "error"),
+    "Station KPIs must render while a line forecast is active."
+  )
+  expect_true(
+    grepl("kpi-grid-4", kpis$html, fixed = TRUE),
+    "Station KPIs keep the four-card grid."
+  )
+})
+
+## The navbar omits the data-source label ----
+navbar <- as.character(
+  htmltools::renderTags(
+    source("ui.R", encoding = "UTF-8")$value(NULL)
+  )$html
+)
+source_tag <- regmatches(
+  navbar,
+  regexpr("<span class=\"source-tag\">.*?</span>", navbar)
+)
+expect_true(
+  length(source_tag) == 1 &&
+    !grepl(DATA_SOURCE_LABEL, source_tag, fixed = TRUE),
+  "The navbar source tag must not show the data-source label."
+)
+
 cli::cli_alert_success("Forecast checks passed.")
