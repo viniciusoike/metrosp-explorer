@@ -18,10 +18,10 @@ manifest_pkgs <- names(manifest$packages)
 
 problems <- character(0)
 
-# Runtime files: top-level .R plus everything under www/ ----
+# Runtime files: top-level .R plus everything under www/ and data/ ----
 runtime_files <- c(
   list.files(".", pattern = "\\.R$"),
-  list.files("www", recursive = TRUE, full.names = TRUE) |>
+  list.files(c("www", "data"), recursive = TRUE, full.names = TRUE) |>
     sub("^\\./", "", x = _)
 )
 
