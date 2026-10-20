@@ -417,13 +417,14 @@ augment_monthly_stl <- function(dat) {
 # Equal-weight ensemble of three models on log demand, fitted only on
 # post-pandemic months so the 2020-21 collapse and recovery do not drive the
 # trend: STL + ETS, ETS, and ARIMA with calendar regressors. Rolling-origin
-# backtests favored the ensemble over each member. Back-transformed point
-# forecasts are medians.
+# backtests favored the ensemble over each member.
 #
 # Intervals are empirical: tools/forecast-backtest.R collects the ensemble's
 # log errors by horizon across all lines, standardizes each by its series'
 # residual scale, and stores the pooled quantiles in
-# data/forecast-quantiles.csv.
+# data/forecast-quantiles.csv. The point path shifts the back-transformed
+# ensemble median by the median error, which removes the retransformation
+# bias and the ensemble's systematic bias in the backtest.
 
 FORECAST_START <- as.Date("2022-01-01")
 FORECAST_H <- 12L
@@ -523,11 +524,12 @@ forecast_line <- function(df, h = FORECAST_H, start = FORECAST_START) {
 
   out <- tibble::tibble(
     date = pt$date,
-    fc_mean = exp(pt$log_mean),
+    fc_mean = exp(pt$log_mean + q$q_mid * pt$scale),
     fc_lower = exp(pt$log_mean + q$q_lower * pt$scale),
     fc_upper = exp(pt$log_mean + q$q_upper * pt$scale)
   )
   attr(out, "scale") <- pt$scale
+  attr(out, "median") <- exp(pt$log_mean)
   return(out)
 }
 
@@ -540,12 +542,18 @@ forecast_growth <- function(observed, fc) {
   return((sum(next_12$fc_mean) / sum(last_12$value) - 1) * 100)
 }
 
-# The same growth with an interval from the 12-month-sum error quantiles
+# The same growth with an interval from the 12-month-sum error quantiles.
+# Those errors were measured against the summed ensemble median, so the
+# bounds apply to that base rather than to the recentered path.
 forecast_growth_interval <- function(observed, fc) {
   point <- forecast_growth(observed, fc)
+  median_growth <- forecast_growth(
+    observed,
+    mutate(fc, fc_mean = attr(fc, "median"))
+  )
   shift <- c(forecast_sum_quantiles$q_lower, forecast_sum_quantiles$q_upper) *
     attr(fc, "scale")
-  bounds <- ((1 + point / 100) * exp(shift) - 1) * 100
+  bounds <- ((1 + median_growth / 100) * exp(shift) - 1) * 100
   return(list(point = point, lower = bounds[1], upper = bounds[2]))
 }
 
@@ -1116,9 +1124,9 @@ forecast_note <- paste0(
   "Projeção: média de três modelos (STL + ETS, ETS e ARIMA com dias úteis), ",
   "ajustados desde ",
   fmt_month_pt(FORECAST_START),
-  ". A faixa indica o intervalo de ",
+  ". A linha e a faixa de ",
   FORECAST_LEVEL,
-  "%, calibrado pelos erros de projeções passadas."
+  "% são calibradas pelos erros de projeções passadas."
 )
 
 line_coverage <- bind_rows(

@@ -4178,10 +4178,10 @@
       "checksum": "5ecee372027bda3042e320acec10fbcc"
     },
     "data/forecast-quantiles.csv": {
-      "checksum": "9e6a703bb685d9e64ffdf28e0615aca1"
+      "checksum": "aeb43e125509ebea126bc8831a1f3afa"
     },
     "global.R": {
-      "checksum": "67abd9c8de872465d19da53e808a6c36"
+      "checksum": "63fc41ddc4636709aef0fc3688c173ee"
     },
     "LICENSE": {
       "checksum": "8c9a2286ab291e54c33e3e793348ce60"
@@ -4208,7 +4208,7 @@
       "checksum": "5f4d109902c83d574bad166a2d9e7554"
     },
     "tests/forecast.R": {
-      "checksum": "389250d82225c1980b8db189314e6c18"
+      "checksum": "3c5f6e2141d0752127c0bebf9ec4fe3a"
     },
     "tests/station-reactivity.R": {
       "checksum": "2a5dc4385cba64eed19e22a124b89770"
@@ -4220,7 +4220,7 @@
       "checksum": "63b9d560b968b798a9f084400cf8c8f6"
     },
     "tools/forecast-backtest.R": {
-      "checksum": "4657a9ed2e97230abc00de220bea6141"
+      "checksum": "847e5bbf3884115aa40556e4538dc10f"
     },
     "ui.R": {
       "checksum": "24f2227ead68988a85fede78f5732400"

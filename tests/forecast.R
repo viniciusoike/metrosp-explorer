@@ -77,22 +77,41 @@ q <- forecast_quantiles
 expect_true(
   is.data.frame(q) &&
     identical(as.integer(q$h), seq_len(FORECAST_H)) &&
-    all(q$q_lower < q$q_upper),
-  "forecast_quantiles must hold a lower and upper quantile for each step."
+    all(q$q_lower < q$q_mid & q$q_mid < q$q_upper),
+  "forecast_quantiles must hold lower, median and upper errors for each step."
 )
 scale <- attr(fc, "scale")
 expect_true(
   is.numeric(scale) && length(scale) == 1 && scale > 0,
   "forecast_line() must attach a positive error scale."
 )
+# the point and both bounds are the ensemble median shifted by the error
+# quantiles, so the path recenters on the median backtest error
+fc_median <- attr(fc, "median")
 expect_true(
-  isTRUE(all.equal(log(fc$fc_upper / fc$fc_mean) / scale, q$q_upper)) &&
-    isTRUE(all.equal(log(fc$fc_lower / fc$fc_mean) / scale, q$q_lower)),
-  "Interval bounds must be the point forecast scaled by the error quantiles."
+  isTRUE(all.equal(log(fc$fc_mean / fc_median) / scale, q$q_mid)) &&
+    isTRUE(all.equal(log(fc$fc_upper / fc_median) / scale, q$q_upper)) &&
+    isTRUE(all.equal(log(fc$fc_lower / fc_median) / scale, q$q_lower)),
+  "The forecast path and bounds must apply the error quantiles to the median."
 )
 
-## The 12-month KPI gets its own interval ----
+## The 12-month KPI matches the chart and gets its own interval ----
+sq <- forecast_sum_quantiles
 growth <- forecast_growth_interval(line_1, fc)
+expect_true(
+  isTRUE(all.equal(growth$point, forecast_growth(line_1, fc))),
+  "The KPI point must be the growth of the plotted forecast path."
+)
+# 12-month-sum errors were measured against the summed ensemble median
+median_growth <- forecast_growth(line_1, dplyr::mutate(fc, fc_mean = fc_median))
+expected <- ((1 + median_growth / 100) *
+  exp(c(sq$q_lower, sq$q_upper) * scale) -
+  1) *
+  100
+expect_true(
+  isTRUE(all.equal(c(growth$lower, growth$upper), expected)),
+  "The KPI bounds must apply the 12-month-sum error quantiles."
+)
 expect_true(
   all(c("point", "lower", "upper") %in% names(growth)) &&
     growth$lower < growth$point &&
