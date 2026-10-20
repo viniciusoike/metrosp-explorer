@@ -431,13 +431,15 @@ FORECAST_H <- 12L
 FORECAST_MIN_OBS <- 36L
 FORECAST_LEVEL <- 90
 
-# Business days and non-holiday Saturdays per month (São Paulo calendar)
+# Business days, non-holiday Saturdays and the remaining days (Sundays and
+# holidays) per month (São Paulo calendar)
 calendar_monthly <- metrosp::calendar_spo |>
   mutate(date = as.Date(format(date, "%Y-%m-01"))) |>
   group_by(date) |>
   summarise(
     bdays = sum(is_business_day),
     sats = sum(weekday == 7 & !is_holiday),
+    other = n() - bdays - sats,
     .groups = "drop"
   )
 
@@ -637,8 +639,35 @@ line_transported_monthly <- demand_data$line_transported_monthly
 station_transported_monthly <- demand_data$station_transported_monthly
 station_entries_daily <- demand_data$station_entries_daily
 
+# Drops line-months whose total falls well short of the total implied by
+# their daily averages (business days, Saturdays, Sundays and holidays). The
+# rolling release can carry a month the source published only in part.
+drop_partial_months <- function(x, threshold = 0.75) {
+  metric_value <- function(value, metric, m) value[metric == m][1]
+  partial <- x |>
+    group_by(date, line_number) |>
+    summarise(
+      total = metric_value(value, metric, "total"),
+      mdu = metric_value(value, metric, "mdu"),
+      msa = metric_value(value, metric, "msa"),
+      mdo = metric_value(value, metric, "mdo"),
+      .groups = "drop"
+    ) |>
+    inner_join(calendar_monthly, by = "date") |>
+    mutate(implied = mdu * bdays + msa * sats + mdo * other) |>
+    filter(total < threshold * implied)
+
+  if (nrow(partial) > 0) {
+    cli::cli_inform(
+      "Dropping partial months: {paste0('line ', partial$line_number, ' ', format(partial$date, '%Y-%m'))}."
+    )
+  }
+  return(anti_join(x, partial, by = c("date", "line_number")))
+}
+
 ## Line-level monthly (entries) ----
 ent <- line_entries_monthly |>
+  drop_partial_months() |>
   filter(
     metric == "total",
     line_number %in% as.integer(LINES)
@@ -648,6 +677,7 @@ ent <- line_entries_monthly |>
 
 ## Line-level monthly (transported) ----
 trans <- line_transported_monthly |>
+  drop_partial_months() |>
   filter(
     metric == "total",
     line_number %in% as.integer(LINES)
