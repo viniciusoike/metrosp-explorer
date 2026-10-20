@@ -4052,7 +4052,7 @@
       "checksum": "06ff7410c411eb6109f0cd4998c240d2"
     },
     ".github/workflows/app-checks.yaml": {
-      "checksum": "83903146e941a4432bc00bf7dc632a46"
+      "checksum": "dc4d972ceaad1fe44f0af1c71bedd92e"
     },
     ".omx/logs/omx-2026-10-02.jsonl": {
       "checksum": "6bbc672b7b60caf2ab05ef48a37d4a2a"
@@ -4178,10 +4178,10 @@
       "checksum": "5ecee372027bda3042e320acec10fbcc"
     },
     "data/forecast-quantiles.csv": {
-      "checksum": "aeb43e125509ebea126bc8831a1f3afa"
+      "checksum": "41e54e4fc5b8fc82a0550e2d64a35ebd"
     },
     "global.R": {
-      "checksum": "63fc41ddc4636709aef0fc3688c173ee"
+      "checksum": "f38c68f3fee89448661b3cf8bfe21f26"
     },
     "LICENSE": {
       "checksum": "8c9a2286ab291e54c33e3e793348ce60"
@@ -4209,6 +4209,9 @@
     },
     "tests/forecast.R": {
       "checksum": "3c5f6e2141d0752127c0bebf9ec4fe3a"
+    },
+    "tests/partial-months.R": {
+      "checksum": "92376cc70e3f2681cdedb393f92d26ef"
     },
     "tests/station-reactivity.R": {
       "checksum": "2a5dc4385cba64eed19e22a124b89770"
