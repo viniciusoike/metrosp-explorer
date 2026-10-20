@@ -408,6 +408,142 @@ augment_monthly_stl <- function(dat) {
   return(dat)
 }
 
+# Line forecasts ----
+# Equal-weight ensemble of three models on log demand, fitted only on
+# post-pandemic months so the 2020-21 collapse and recovery do not drive the
+# trend: STL + ETS, ETS, and ARIMA with calendar regressors. Rolling-origin
+# backtests favored the ensemble over each member. Back-transformed point
+# forecasts are medians.
+#
+# Intervals are empirical: tools/forecast-backtest.R collects the ensemble's
+# log errors by horizon across all lines, standardizes each by its series'
+# residual scale, and stores the pooled quantiles in
+# data/forecast-quantiles.csv.
+
+FORECAST_START <- as.Date("2022-01-01")
+FORECAST_H <- 12L
+FORECAST_MIN_OBS <- 36L
+FORECAST_LEVEL <- 90
+
+# Business days and non-holiday Saturdays per month (São Paulo calendar)
+calendar_monthly <- metrosp::calendar_spo |>
+  mutate(date = as.Date(format(date, "%Y-%m-01"))) |>
+  group_by(date) |>
+  summarise(
+    bdays = sum(is_business_day),
+    sats = sum(weekday == 7 & !is_holiday),
+    .groups = "drop"
+  )
+
+calendar_xreg <- function(dates) {
+  rows <- match(dates, calendar_monthly$date)
+  return(as.matrix(calendar_monthly[rows, c("bdays", "sats")]))
+}
+
+# Ensemble point forecast on the log scale. Returns NULL when the fit window
+# is too short or has gaps, or the horizon outruns the calendar. `scale` is
+# the in-sample residual SD of the STL + ETS member, used to standardize
+# errors across lines.
+forecast_point <- function(df, h = FORECAST_H, start = FORECAST_START) {
+  fit_df <- df |>
+    filter(date >= start, !is.na(value), value > 0) |>
+    arrange(date)
+  if (nrow(fit_df) < FORECAST_MIN_OBS) {
+    return(NULL)
+  }
+  months <- seq(min(fit_df$date), max(fit_df$date), by = "month")
+  if (length(months) != nrow(fit_df)) {
+    return(NULL)
+  }
+  dates <- seq(max(fit_df$date), by = "month", length.out = h + 1)[-1]
+  if (!all(dates %in% calendar_monthly$date)) {
+    return(NULL)
+  }
+
+  first <- as.POSIXlt(fit_df$date[1])
+  y <- stats::ts(
+    log(fit_df$value),
+    start = c(first$year + 1900, first$mon + 1),
+    frequency = 12
+  )
+
+  stl_ets <- forecast::stlf(y, h = h, method = "ets", robust = TRUE)
+  members <- list(
+    stl_ets$mean,
+    forecast::forecast(forecast::ets(y), h = h)$mean,
+    forecast::forecast(
+      forecast::auto.arima(y, xreg = calendar_xreg(fit_df$date)),
+      xreg = calendar_xreg(dates)
+    )$mean
+  )
+
+  return(list(
+    date = dates,
+    log_mean = rowMeans(sapply(members, as.numeric)),
+    scale = stats::sd(stats::residuals(stl_ets), na.rm = TRUE)
+  ))
+}
+
+# Without the quantile file (e.g. before the first backtest run) the app
+# shows no forecast
+read_forecast_quantiles <- function(path = "data/forecast-quantiles.csv") {
+  if (!file.exists(path)) {
+    cli::cli_warn(c(
+      "Forecast quantiles not found; forecasts are disabled.",
+      "i" = "Run {.file tools/forecast-backtest.R} to create {.file {path}}."
+    ))
+    return(list(month = NULL, sum12 = NULL))
+  }
+  q <- readr::read_csv(path, show_col_types = FALSE)
+  return(list(
+    month = q |> filter(target == "month") |> arrange(h),
+    sum12 = q |> filter(target == "sum12")
+  ))
+}
+
+forecast_quantile_tables <- read_forecast_quantiles()
+forecast_quantiles <- forecast_quantile_tables$month
+forecast_sum_quantiles <- forecast_quantile_tables$sum12
+
+# One line's monthly series in, an h-month forecast with its interval out
+forecast_line <- function(df, h = FORECAST_H, start = FORECAST_START) {
+  if (is.null(forecast_quantiles)) {
+    return(NULL)
+  }
+  pt <- forecast_point(df, h = h, start = start)
+  if (is.null(pt)) {
+    return(NULL)
+  }
+  q <- forecast_quantiles[match(seq_len(h), forecast_quantiles$h), ]
+
+  out <- tibble::tibble(
+    date = pt$date,
+    fc_mean = exp(pt$log_mean),
+    fc_lower = exp(pt$log_mean + q$q_lower * pt$scale),
+    fc_upper = exp(pt$log_mean + q$q_upper * pt$scale)
+  )
+  attr(out, "scale") <- pt$scale
+  return(out)
+}
+
+# Percent change of the next 12 forecast months over the last 12 observed
+forecast_growth <- function(observed, fc) {
+  last_12 <- observed |>
+    filter(!is.na(value)) |>
+    slice_max(date, n = 12)
+  next_12 <- fc |> slice_min(date, n = 12)
+  return((sum(next_12$fc_mean) / sum(last_12$value) - 1) * 100)
+}
+
+# The same growth with an interval from the 12-month-sum error quantiles
+forecast_growth_interval <- function(observed, fc) {
+  point <- forecast_growth(observed, fc)
+  shift <- c(forecast_sum_quantiles$q_lower, forecast_sum_quantiles$q_upper) *
+    attr(fc, "scale")
+  bounds <- ((1 + point / 100) * exp(shift) - 1) * 100
+  return(list(point = point, lower = bounds[1], upper = bounds[2]))
+}
+
 # Pre-build data ----
 
 DEMAND_DATASETS <- c(
@@ -971,6 +1107,15 @@ trend_note <- if (HAS_TRENDSERIES) {
   "Instale o pacote trendseries para habilitar tendência STL."
 }
 
+forecast_note <- paste0(
+  "Projeção: média de três modelos (STL + ETS, ETS e ARIMA com dias úteis), ",
+  "ajustados desde ",
+  fmt_month_pt(FORECAST_START),
+  ". A faixa indica o intervalo de ",
+  FORECAST_LEVEL,
+  "%, calibrado pelos erros de projeções passadas."
+)
+
 line_coverage <- bind_rows(
   entrance = ent,
   transported = trans,
@@ -1032,7 +1177,13 @@ info_box <- function(title, definition, rows, notes = NULL) {
   ))
 }
 
-lines_info_box <- function(lines, metric, start, show_trend) {
+lines_info_box <- function(
+  lines,
+  metric,
+  start,
+  show_trend,
+  show_forecast = FALSE
+) {
   info <- metric_info[[metric]]
   coverage <- line_coverage[line_coverage$metric == metric, ]
 
@@ -1064,7 +1215,8 @@ lines_info_box <- function(lines, metric, start, show_trend) {
     ) {
       "Linha 5: série termina em ago/2018, quando passou à ViaMobilidade."
     },
-    if (show_trend) trend_note
+    if (show_trend) trend_note,
+    if (show_forecast) forecast_note
   )
 
   return(info_box(info$label, info$definition, rows, notes))
