@@ -71,6 +71,8 @@ quantiles <- errors |>
   group_by(target, h) |>
   summarise(
     q_lower = stats::quantile(z, probs[1], names = FALSE),
+    # the median error recenters the forecast path in the app
+    q_mid = stats::quantile(z, 0.5, names = FALSE),
     q_upper = stats::quantile(z, probs[2], names = FALSE),
     n = n(),
     .groups = "drop"

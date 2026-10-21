@@ -531,11 +531,8 @@ function(input, output, session) {
 
     yr_label <- if (!is.null(yr) && nzchar(yr)) yr else ""
 
-    fc <- lines_forecast()
-    fc_growth <- if (!is.null(fc)) forecast_growth_interval(monthly, fc)
-
     div(
-      class = if (is.null(fc)) "kpi-grid kpi-grid-4" else "kpi-grid kpi-grid-5",
+      class = "kpi-grid kpi-grid-4",
       kpi_card(
         "Média dias úteis",
         wd_avg,

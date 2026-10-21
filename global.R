@@ -236,6 +236,11 @@ js_tooltip_pt_br <- function(date_format = c("month", "day")) {
     ),
     "  params.forEach(function(p) {",
     "    var v = Array.isArray(p.value) ? p.value[1] : p.value;",
+    # band series (e_band2) arrive as [date, lower, upper]; the forecast
+    # band's anchor on the last observation has lower == upper, so skip it
+    "    var band = Array.isArray(p.value) && p.value.length >= 3;",
+    "    if (band && Number(p.value[1]) === Number(p.value[2])) return;",
+    "    var label = band ? fmtN(p.value[1]) + ' \\u2013 ' + fmtN(p.value[2]) : fmtN(v);",
     "    t += '<div style=\"display:flex;align-items:center;gap:6px;\">';",
     "    t += '<span style=\"display:inline-block;width:8px;height:8px;border-radius:50%;background:' + p.color + '\"></span>';",
     paste0(
@@ -246,7 +251,7 @@ js_tooltip_pt_br <- function(date_format = c("month", "day")) {
     paste0(
       "    t += '<span style=\"margin-left:auto;font-weight:600;color:",
       metro_ink,
-      "\">' + fmtN(v) + '</span>';"
+      "\">' + label + '</span>';"
     ),
     "    t += '</div>';",
     "  });",
@@ -412,26 +417,29 @@ augment_monthly_stl <- function(dat) {
 # Equal-weight ensemble of three models on log demand, fitted only on
 # post-pandemic months so the 2020-21 collapse and recovery do not drive the
 # trend: STL + ETS, ETS, and ARIMA with calendar regressors. Rolling-origin
-# backtests favored the ensemble over each member. Back-transformed point
-# forecasts are medians.
+# backtests favored the ensemble over each member.
 #
 # Intervals are empirical: tools/forecast-backtest.R collects the ensemble's
 # log errors by horizon across all lines, standardizes each by its series'
 # residual scale, and stores the pooled quantiles in
-# data/forecast-quantiles.csv.
+# data/forecast-quantiles.csv. The point path shifts the back-transformed
+# ensemble median by the median error, which removes the retransformation
+# bias and the ensemble's systematic bias in the backtest.
 
 FORECAST_START <- as.Date("2022-01-01")
 FORECAST_H <- 12L
 FORECAST_MIN_OBS <- 36L
 FORECAST_LEVEL <- 90
 
-# Business days and non-holiday Saturdays per month (São Paulo calendar)
+# Business days, non-holiday Saturdays and the remaining days (Sundays and
+# holidays) per month (São Paulo calendar)
 calendar_monthly <- metrosp::calendar_spo |>
   mutate(date = as.Date(format(date, "%Y-%m-01"))) |>
   group_by(date) |>
   summarise(
     bdays = sum(is_business_day),
     sats = sum(weekday == 7 & !is_holiday),
+    other = n() - bdays - sats,
     .groups = "drop"
   )
 
@@ -518,11 +526,12 @@ forecast_line <- function(df, h = FORECAST_H, start = FORECAST_START) {
 
   out <- tibble::tibble(
     date = pt$date,
-    fc_mean = exp(pt$log_mean),
+    fc_mean = exp(pt$log_mean + q$q_mid * pt$scale),
     fc_lower = exp(pt$log_mean + q$q_lower * pt$scale),
     fc_upper = exp(pt$log_mean + q$q_upper * pt$scale)
   )
   attr(out, "scale") <- pt$scale
+  attr(out, "median") <- exp(pt$log_mean)
   return(out)
 }
 
@@ -535,12 +544,18 @@ forecast_growth <- function(observed, fc) {
   return((sum(next_12$fc_mean) / sum(last_12$value) - 1) * 100)
 }
 
-# The same growth with an interval from the 12-month-sum error quantiles
+# The same growth with an interval from the 12-month-sum error quantiles.
+# Those errors were measured against the summed ensemble median, so the
+# bounds apply to that base rather than to the recentered path.
 forecast_growth_interval <- function(observed, fc) {
   point <- forecast_growth(observed, fc)
+  median_growth <- forecast_growth(
+    observed,
+    mutate(fc, fc_mean = attr(fc, "median"))
+  )
   shift <- c(forecast_sum_quantiles$q_lower, forecast_sum_quantiles$q_upper) *
     attr(fc, "scale")
-  bounds <- ((1 + point / 100) * exp(shift) - 1) * 100
+  bounds <- ((1 + median_growth / 100) * exp(shift) - 1) * 100
   return(list(point = point, lower = bounds[1], upper = bounds[2]))
 }
 
@@ -624,8 +639,35 @@ line_transported_monthly <- demand_data$line_transported_monthly
 station_transported_monthly <- demand_data$station_transported_monthly
 station_entries_daily <- demand_data$station_entries_daily
 
+# Drops line-months whose total falls well short of the total implied by
+# their daily averages (business days, Saturdays, Sundays and holidays). The
+# rolling release can carry a month the source published only in part.
+drop_partial_months <- function(x, threshold = 0.75) {
+  metric_value <- function(value, metric, m) value[metric == m][1]
+  partial <- x |>
+    group_by(date, line_number) |>
+    summarise(
+      total = metric_value(value, metric, "total"),
+      mdu = metric_value(value, metric, "mdu"),
+      msa = metric_value(value, metric, "msa"),
+      mdo = metric_value(value, metric, "mdo"),
+      .groups = "drop"
+    ) |>
+    inner_join(calendar_monthly, by = "date") |>
+    mutate(implied = mdu * bdays + msa * sats + mdo * other) |>
+    filter(total < threshold * implied)
+
+  if (nrow(partial) > 0) {
+    cli::cli_inform(
+      "Dropping partial months: {paste0('line ', partial$line_number, ' ', format(partial$date, '%Y-%m'))}."
+    )
+  }
+  return(anti_join(x, partial, by = c("date", "line_number")))
+}
+
 ## Line-level monthly (entries) ----
 ent <- line_entries_monthly |>
+  drop_partial_months() |>
   filter(
     metric == "total",
     line_number %in% as.integer(LINES)
@@ -635,6 +677,7 @@ ent <- line_entries_monthly |>
 
 ## Line-level monthly (transported) ----
 trans <- line_transported_monthly |>
+  drop_partial_months() |>
   filter(
     metric == "total",
     line_number %in% as.integer(LINES)
@@ -1111,9 +1154,9 @@ forecast_note <- paste0(
   "Projeção: média de três modelos (STL + ETS, ETS e ARIMA com dias úteis), ",
   "ajustados desde ",
   fmt_month_pt(FORECAST_START),
-  ". A faixa indica o intervalo de ",
+  ". A linha e a faixa de ",
   FORECAST_LEVEL,
-  "%, calibrado pelos erros de projeções passadas."
+  "% são calibradas pelos erros de projeções passadas."
 )
 
 line_coverage <- bind_rows(

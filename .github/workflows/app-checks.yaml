@@ -53,6 +53,10 @@ jobs:
         shell: Rscript {0}
         run: source("tests/download-contract.R")
 
+      - name: Check partial-month guard
+        shell: Rscript {0}
+        run: source("tests/partial-months.R")
+
       - name: Check line forecasts
         shell: Rscript {0}
         run: source("tests/forecast.R")
