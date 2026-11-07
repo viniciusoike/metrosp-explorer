@@ -7,7 +7,8 @@ on:
 
 jobs:
   checks:
-    runs-on: ubuntu-latest
+    # Keep GDAL compatible with the terra version pinned in renv.lock.
+    runs-on: ubuntu-24.04
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       # UTF-8 locale so the parser reads the accented strings / em-dashes in
