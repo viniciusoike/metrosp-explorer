@@ -32,6 +32,11 @@ jobs:
           sudo apt-get install -y \
             libgdal-dev libgeos-dev libproj-dev libudunits2-dev
 
+      # promises needs otel at load time; restore it before the full batch.
+      - name: Restore locked telemetry dependency first
+        shell: Rscript {0}
+        run: renv::restore(packages = "otel", prompt = FALSE)
+
       - uses: r-lib/actions/setup-renv@v2
 
       - name: Check metrosp 2.0 data contract
