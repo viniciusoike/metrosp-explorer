@@ -97,7 +97,7 @@ if (length(problems) > 0) {
 }
 
 # Deployment must fetch the documented immutable GitHub revision. ----
-expected_metrosp_sha <- "1bf885961331e469e20ab0c24c28a1535adb43c4"
+expected_metrosp_sha <- "874b0a607c843b41caa4373986eb323c86fdaf0b"
 lockfile <- jsonlite::fromJSON("renv.lock", simplifyVector = FALSE)
 locked_source <- lockfile$Packages$metrosp
 manifest_source <- manifest$packages$metrosp
