@@ -27,11 +27,12 @@ jobs:
           # Use lockfile repositories; the PPM mirror lacks some locked versions.
           use-public-rspm: false
 
-      - name: Install system dependencies (sf)
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            libgdal-dev libgeos-dev libproj-dev libudunits2-dev
+            libgdal-dev libgeos-dev libproj-dev libudunits2-dev \
+            libuv1-dev cmake gdal-bin libx11-dev pandoc
 
       # promises needs otel at load time; restore it before the full batch.
       - name: Restore locked telemetry dependency first
