@@ -96,6 +96,22 @@ if (length(problems) > 0) {
   )
 }
 
+# Deployment must fetch the documented immutable GitHub revision. ----
+expected_metrosp_sha <- "874b0a607c843b41caa4373986eb323c86fdaf0b"
+lockfile <- jsonlite::fromJSON("renv.lock", simplifyVector = FALSE)
+locked_source <- lockfile$Packages$metrosp
+manifest_source <- manifest$packages$metrosp
+if (
+  !identical(locked_source$Source, "GitHub") ||
+    !identical(manifest_source$Source, "github") ||
+    !identical(locked_source$RemoteSha, expected_metrosp_sha) ||
+    !identical(manifest_source$description$RemoteSha, expected_metrosp_sha)
+) {
+  cli::cli_abort(
+    "metrosp must use the documented GitHub commit in both deployment records."
+  )
+}
+
 # The schema migration requires the same metrosp source in both records.
 lockfile <- jsonlite::fromJSON("renv.lock", simplifyVector = FALSE)
 locked_metrosp <- lockfile$Packages$metrosp

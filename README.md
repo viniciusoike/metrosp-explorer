@@ -47,7 +47,7 @@ shiny::runApp(".")
 
 [renv](https://rstudio.github.io/renv/) manages the dependencies. The lockfile
 (`renv.lock`) pins every package to an exact version and source, and it pins
-`metrosp` 2.0.0 to [GitHub commit `1bf8859`](https://github.com/viniciusoike/metrosp/commit/1bf885961331e469e20ab0c24c28a1535adb43c4),
+`metrosp` 2.1.0 to [GitHub commit `874b0a6`](https://github.com/viniciusoike/metrosp/commit/874b0a607c843b41caa4373986eb323c86fdaf0b),
 which fixes archived station-name lookup when `sf` is loaded.
 
 After cloning, restore the project library.
