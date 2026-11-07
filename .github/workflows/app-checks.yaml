@@ -24,7 +24,8 @@ jobs:
           # binaries compiled against that version, and newer R (4.6+) can no
           # longer build some locked packages from source (e.g. lazyeval)
           r-version: 4.5.1
-          use-public-rspm: true
+          # Use lockfile repositories; the PPM mirror lacks some locked versions.
+          use-public-rspm: false
 
       - name: Install system dependencies (sf)
         run: |
