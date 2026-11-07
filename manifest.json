@@ -4344,7 +4344,7 @@
       "checksum": "06ff7410c411eb6109f0cd4998c240d2"
     },
     ".github/workflows/app-checks.yaml": {
-      "checksum": "9ae4f9d841a7c7ac07c3168995b32e80"
+      "checksum": "89b84747e0875f19981171d1f877776f"
     },
     ".omx/logs/omx-2026-10-02.jsonl": {
       "checksum": "6bbc672b7b60caf2ab05ef48a37d4a2a"
@@ -4488,10 +4488,10 @@
       "checksum": "053868db2f40982404cfced3ff2dd3f4"
     },
     "data/forecast-quantiles.csv": {
-      "checksum": "9e6a703bb685d9e64ffdf28e0615aca1"
+      "checksum": "41e54e4fc5b8fc82a0550e2d64a35ebd"
     },
     "global.R": {
-      "checksum": "ff7f6da0489a47b464841a9cdee60d59"
+      "checksum": "f38c68f3fee89448661b3cf8bfe21f26"
     },
     "LICENSE": {
       "checksum": "8c9a2286ab291e54c33e3e793348ce60"
@@ -4503,7 +4503,7 @@
       "checksum": "111f5deede4dc2066a1696717df2e57a"
     },
     "server.R": {
-      "checksum": "e0609f9debdf258afaaf4eaebdf20305"
+      "checksum": "a149ec17d78ea43b17f942ad0fd285ca"
     },
     "static/images/screenshot_app.png": {
       "checksum": "e1c43d4af257bf08a93352aee53b7588"
@@ -4518,7 +4518,7 @@
       "checksum": "5f4d109902c83d574bad166a2d9e7554"
     },
     "tests/forecast.R": {
-      "checksum": "205c954232aa66fa3a1d33872fd3bebb"
+      "checksum": "3c5f6e2141d0752127c0bebf9ec4fe3a"
     },
     "tests/station-reactivity.R": {
       "checksum": "2a5dc4385cba64eed19e22a124b89770"
@@ -4530,10 +4530,10 @@
       "checksum": "c9187240e509aec85c1bd5d2792930a5"
     },
     "tools/forecast-backtest.R": {
-      "checksum": "4657a9ed2e97230abc00de220bea6141"
+      "checksum": "847e5bbf3884115aa40556e4538dc10f"
     },
     "ui.R": {
-      "checksum": "03a240f16217475aa15444565b17a5d2"
+      "checksum": "24f2227ead68988a85fede78f5732400"
     },
     "www/ekio-badge-wordmark.svg": {
       "checksum": "133760a69ec8cb7d37a58f0d6c530fa7"

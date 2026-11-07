@@ -555,7 +555,6 @@ function(request) {
       tags$span(
         class = "source-tag",
         sprintf("Dados até %s", fmt_month_pt(DATA_MAX)),
-        sprintf(" · %s", DATA_SOURCE_LABEL),
         " · Fonte: ",
         # metrosp consolidates and processes the raw sources (METRO SP,
         # Insper Dataverse, GeoSampa), so the package is the credited
